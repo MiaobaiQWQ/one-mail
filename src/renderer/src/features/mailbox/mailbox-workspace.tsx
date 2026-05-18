@@ -900,7 +900,6 @@ export function MailboxWorkspace(): React.JSX.Element {
         open={dialogKind === 'settings'}
         settings={settings}
         systemInfo={systemInfo}
-        updateStatus={updateStatus}
         initialSection={settingsInitialSection}
         onOpenChange={(open) => setDialogKind(open ? 'settings' : null)}
         onSubmit={handleUpdateSettings}

@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { app, BrowserWindow } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import electronUpdater, { type AppUpdater, type ProgressInfo } from 'electron-updater'
@@ -5,9 +6,14 @@ import { isBoringSslBadDecryptError } from '../runtime-errors'
 import type { AppUpdateCheckResult, AppUpdateStatus } from '../../shared/types'
 
 const UPDATE_CHECK_INTERVAL_MS = 1000 * 60 * 60 * 6
+const PACKAGED_APP_UPDATE_UNSUPPORTED_MESSAGE =
+  '当前运行环境暂不支持自动检查更新，请使用已打包的正式版本。'
+const MAC_CODE_SIGN_UPDATE_UNSUPPORTED_MESSAGE =
+  '当前 macOS 应用未使用 Developer ID Application 正式签名，无法通过自动更新的代码签名校验。请先下载安装正式签名版本后再检查更新。'
 
 let updateCheckTimer: NodeJS.Timeout | undefined
 let autoUpdaterErrorHandlerInstalled = false
+let macAutoUpdateSigningSupported: boolean | undefined
 let lastUpdateStatus: AppUpdateStatus | null = null
 
 function getAutoUpdater(): AppUpdater {
@@ -16,7 +22,7 @@ function getAutoUpdater(): AppUpdater {
 }
 
 function shouldCheckForUpdates(): boolean {
-  return app.isPackaged && !is.dev
+  return getUpdateUnsupportedMessage() === null
 }
 
 export function startAutoUpdateChecks(): void {
@@ -51,10 +57,11 @@ export function stopAutoUpdateChecks(): void {
 
 export async function checkForAppUpdates(): Promise<AppUpdateCheckResult> {
   const currentVersion = app.getVersion()
+  const unsupportedMessage = getUpdateUnsupportedMessage()
 
-  if (!shouldCheckForUpdates()) {
+  if (unsupportedMessage) {
     const status = updateStatus('unsupported', {
-      message: '当前运行环境暂不支持自动检查更新，请使用已打包的正式版本。'
+      message: unsupportedMessage
     })
     return {
       status: 'unsupported',
@@ -94,7 +101,7 @@ export async function checkForAppUpdates(): Promise<AppUpdateCheckResult> {
     return {
       status: 'error',
       currentVersion,
-      message: error instanceof Error ? error.message : '检查更新失败。'
+      message: getUpdateErrorMessage(error)
     }
   }
 }
@@ -117,6 +124,51 @@ export function installDownloadedAppUpdate(): boolean {
 
   getAutoUpdater().quitAndInstall()
   return true
+}
+
+function getUpdateUnsupportedMessage(): string | null {
+  if (!app.isPackaged || is.dev) {
+    return PACKAGED_APP_UPDATE_UNSUPPORTED_MESSAGE
+  }
+
+  if (process.platform === 'darwin' && !isMacAppSignedForAutoUpdate()) {
+    return MAC_CODE_SIGN_UPDATE_UNSUPPORTED_MESSAGE
+  }
+
+  return null
+}
+
+function isMacAppSignedForAutoUpdate(): boolean {
+  if (macAutoUpdateSigningSupported !== undefined) {
+    return macAutoUpdateSigningSupported
+  }
+
+  const result = spawnSync('/usr/bin/codesign', ['-dv', '--verbose=4', process.execPath], {
+    encoding: 'utf8'
+  })
+  const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`
+  const teamIdentifier = output.match(/^TeamIdentifier=(.+)$/m)?.[1]?.trim()
+  const signature = output.match(/^Signature=(.+)$/m)?.[1]?.trim()
+  const authorities =
+    output.match(/^Authority=(.+)$/gm)?.map((line) => line.replace(/^Authority=/, '').trim()) ?? []
+
+  macAutoUpdateSigningSupported =
+    result.status === 0 &&
+    Boolean(teamIdentifier) &&
+    teamIdentifier !== 'not set' &&
+    signature !== 'adhoc' &&
+    authorities.some((authority) => authority.startsWith('Developer ID Application:'))
+
+  if (!macAutoUpdateSigningSupported) {
+    console.warn('Skipped macOS auto update check because the app is not Developer ID signed.', {
+      signature,
+      teamIdentifier,
+      authorities,
+      codeSigningError: result.error?.message
+    })
+  }
+
+  return macAutoUpdateSigningSupported
 }
 
 function installAutoUpdaterErrorHandler(autoUpdater: AppUpdater): void {
@@ -169,9 +221,22 @@ function logUpdateError(error: unknown): void {
   }
 
   updateStatus('error', {
-    message: error instanceof Error ? error.message : '检查更新失败。'
+    message: getUpdateErrorMessage(error)
   })
   console.error('Failed to check for updates', error)
+}
+
+function getUpdateErrorMessage(error: unknown): string {
+  if (isCodeSignatureValidationError(error)) {
+    return '下载的更新包未通过 macOS 代码签名校验。请手动下载安装正式签名版本，后续再使用自动更新。'
+  }
+
+  return error instanceof Error ? error.message : '检查更新失败。'
+}
+
+function isCodeSignatureValidationError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('Code signature') && message.includes('did not pass validation')
 }
 
 function updateStatus(

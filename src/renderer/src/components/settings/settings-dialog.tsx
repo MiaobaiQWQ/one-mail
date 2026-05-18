@@ -12,7 +12,6 @@ import {
   LoaderCircle,
   Power,
   RefreshCcw,
-  RotateCcw,
   ShieldCheck,
   Upload
 } from 'lucide-react'
@@ -21,10 +20,8 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
 import {
-  checkForAppUpdates,
   exportSqlBackup,
   importSqlBackup,
-  installAppUpdate,
   openExternalUrl,
   revealPathInFileManager
 } from '@renderer/lib/api'
@@ -49,14 +46,7 @@ import {
 } from '@renderer/components/ui/select'
 import { Switch } from '@renderer/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/alert'
-import { Progress } from '@renderer/components/ui/progress'
-import type {
-  AppSettings,
-  AppUpdateCheckResult,
-  AppUpdateStatus,
-  SettingsUpdateInput,
-  SystemInfo
-} from '../../../../shared/types'
+import type { AppSettings, SettingsUpdateInput, SystemInfo } from '../../../../shared/types'
 import { cn } from '@renderer/lib/utils'
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
 
@@ -64,7 +54,6 @@ type SettingsDialogProps = {
   open: boolean
   settings: AppSettings | null
   systemInfo: SystemInfo | null
-  updateStatus: AppUpdateStatus | null
   initialSection?: SettingsSection
   onOpenChange: (open: boolean) => void
   onSubmit: (input: SettingsUpdateInput) => Promise<void>
@@ -112,7 +101,6 @@ export function SettingsDialog({
   open,
   settings,
   systemInfo,
-  updateStatus,
   initialSection = 'general',
   onOpenChange,
   onSubmit,
@@ -123,7 +111,6 @@ export function SettingsDialog({
   const [section, setSection] = React.useState<SettingsSection>('general')
   const [pending, setPending] = React.useState(false)
   const [backupPending, setBackupPending] = React.useState<'export' | 'import' | null>(null)
-  const [updateResult, setUpdateResult] = React.useState<AppUpdateCheckResult | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [backupMessage, setBackupMessage] = React.useState<BackupMessage | null>(null)
   const [backupError, setBackupError] = React.useState<string | null>(null)
@@ -250,7 +237,6 @@ export function SettingsDialog({
       setError(null)
       setBackupError(null)
       setBackupMessage(null)
-      setUpdateResult(null)
       setSection('general')
     }
     onOpenChange(nextOpen)
@@ -297,22 +283,6 @@ export function SettingsDialog({
       )
     } finally {
       setBackupPending(null)
-    }
-  }
-
-  async function handleCheckUpdates(): Promise<void> {
-    setUpdateResult(null)
-
-    try {
-      const result = await checkForAppUpdates()
-      setUpdateResult(result)
-    } catch (updateError) {
-      setUpdateResult({
-        status: 'error',
-        currentVersion: systemInfo?.appVersion ?? '',
-        message:
-          updateError instanceof Error ? updateError.message : t('settings.about.updateError')
-      })
     }
   }
 
@@ -364,13 +334,7 @@ export function SettingsDialog({
               onImport={handleImport}
             />
           ) : (
-            <AboutSettings
-              systemInfo={systemInfo}
-              updateStatus={updateStatus}
-              updateResult={updateResult}
-              onCheckUpdates={handleCheckUpdates}
-              onInstallUpdate={installAppUpdate}
-            />
+            <AboutSettings systemInfo={systemInfo} />
           )}
         </div>
       </div>
@@ -541,22 +505,9 @@ function BackupSettings({
   )
 }
 
-function AboutSettings({
-  systemInfo,
-  updateStatus,
-  updateResult,
-  onCheckUpdates,
-  onInstallUpdate
-}: {
-  systemInfo: SystemInfo | null
-  updateStatus: AppUpdateStatus | null
-  updateResult: AppUpdateCheckResult | null
-  onCheckUpdates: () => Promise<void>
-  onInstallUpdate: () => Promise<boolean>
-}): React.JSX.Element {
+function AboutSettings({ systemInfo }: { systemInfo: SystemInfo | null }): React.JSX.Element {
   const { t } = useI18n()
   const version = systemInfo?.appVersion ? `v${systemInfo.appVersion}` : t('common.loading')
-  const updatePending = isUpdateBusy(updateStatus)
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[540px] flex-col gap-3 p-3 sm:p-4">
@@ -576,93 +527,8 @@ function AboutSettings({
             </Button>
           }
         />
-
-        <SettingRow
-          icon={RefreshCcw}
-          title={t('settings.about.updateTitle')}
-          description={t('settings.about.updateDescription')}
-          control={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void onCheckUpdates()}
-              disabled={updatePending}
-            >
-              {updatePending ? (
-                <LoaderCircle data-icon="inline-start" className="animate-spin" />
-              ) : (
-                <RefreshCcw data-icon="inline-start" />
-              )}
-              {updatePending ? t('settings.about.updateChecking') : t('settings.about.updateCheck')}
-            </Button>
-          }
-        />
-
-        {updateStatus && updateStatus.state !== 'idle' ? (
-          <UpdateStatusView status={updateStatus} onInstallUpdate={onInstallUpdate} />
-        ) : updateResult ? (
-          <UpdateResultView result={updateResult} />
-        ) : null}
       </FieldGroup>
     </div>
-  )
-}
-
-function UpdateStatusView({
-  status,
-  onInstallUpdate
-}: {
-  status: AppUpdateStatus
-  onInstallUpdate: () => Promise<boolean>
-}): React.JSX.Element {
-  const { t } = useI18n()
-  const variant = status.state === 'error' ? 'destructive' : 'default'
-  const showProgress = status.state === 'downloading' || Boolean(status.progress)
-  const progressValue = status.progress?.percent ?? (status.state === 'downloaded' ? 100 : 0)
-  const Icon = isUpdateBusy(status) ? LoaderCircle : ShieldCheck
-  const canInstall = status.state === 'downloaded'
-
-  return (
-    <Alert className="py-2 text-xs" variant={variant}>
-      <Icon className={isUpdateBusy(status) ? 'animate-spin' : undefined} />
-      <AlertTitle>{getUpdateStatusTitle(status, t)}</AlertTitle>
-      <AlertDescription className="flex flex-col gap-2 text-xs">
-        <span>{status.message}</span>
-        {showProgress ? (
-          <span className="flex flex-col gap-1">
-            <Progress value={progressValue} />
-            <span className="text-muted-foreground">
-              {formatUpdateProgress(status.progress, t)}
-            </span>
-          </span>
-        ) : null}
-        {canInstall ? (
-          <Button
-            className="w-fit"
-            size="sm"
-            onClick={() => {
-              void onInstallUpdate()
-            }}
-          >
-            <RotateCcw data-icon="inline-start" />
-            {t('settings.about.updateRestart')}
-          </Button>
-        ) : null}
-      </AlertDescription>
-    </Alert>
-  )
-}
-
-function UpdateResultView({ result }: { result: AppUpdateCheckResult }): React.JSX.Element {
-  const { t } = useI18n()
-  const variant = result.status === 'error' ? 'destructive' : 'default'
-
-  return (
-    <Alert className="py-2 text-xs" variant={variant}>
-      <ShieldCheck />
-      <AlertTitle>{getUpdateResultTitle(result, t)}</AlertTitle>
-      <AlertDescription className="text-xs">{result.message}</AlertDescription>
-    </Alert>
   )
 }
 
@@ -693,74 +559,6 @@ function BackupMessageView({ message }: { message: BackupMessage }): React.JSX.E
       </Button>
     </div>
   )
-}
-
-function isUpdateBusy(status: AppUpdateStatus | null): boolean {
-  return (
-    status?.state === 'checking' ||
-    status?.state === 'available' ||
-    status?.state === 'downloading' ||
-    status?.state === 'installing'
-  )
-}
-
-function getUpdateStatusTitle(
-  status: AppUpdateStatus,
-  t: (key: TranslationKey) => string
-): string {
-  if (status.state === 'checking') return t('settings.about.updateChecking')
-  if (status.state === 'downloading') return t('settings.about.updateDownloading')
-  if (status.state === 'downloaded') return t('settings.about.updateDownloaded')
-  if (status.state === 'installing') return t('settings.about.updateInstalling')
-  if (status.state === 'available') {
-    return status.latestVersion
-      ? `${t('settings.about.updateAvailable')} v${status.latestVersion}`
-      : t('settings.about.updateAvailable')
-  }
-  if (status.state === 'not_available') return t('settings.about.updateNotAvailable')
-  if (status.state === 'unsupported') return t('settings.about.updateUnsupported')
-  if (status.state === 'cancelled') return t('settings.about.updateCancelled')
-  if (status.state === 'error') return t('settings.about.updateFailed')
-  return t('settings.about.updateIdle')
-}
-
-function formatUpdateProgress(
-  progress: AppUpdateStatus['progress'],
-  t: (key: TranslationKey, values?: Record<string, string | number>) => string
-): string {
-  if (!progress) {
-    return t('settings.about.updateProgressUnknown')
-  }
-
-  return t('settings.about.updateProgress', {
-    percent: progress.percent.toFixed(1),
-    transferred: formatBytes(progress.transferredBytes),
-    total: formatBytes(progress.totalBytes),
-    speed: formatBytes(progress.bytesPerSecond)
-  })
-}
-
-function formatBytes(value: number): string {
-  if (!value) return '0 B'
-  if (value < 1024) return `${Math.round(value)} B`
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
-  if (value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`
-  return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`
-}
-
-function getUpdateResultTitle(
-  result: AppUpdateCheckResult,
-  t: (key: TranslationKey) => string
-): string {
-  if (result.status === 'available') {
-    return result.latestVersion
-      ? `${t('settings.about.updateAvailable')} v${result.latestVersion}`
-      : t('settings.about.updateAvailable')
-  }
-
-  if (result.status === 'not_available') return t('settings.about.updateNotAvailable')
-  if (result.status === 'unsupported') return t('settings.about.updateUnsupported')
-  return t('settings.about.updateFailed')
 }
 
 function SettingRow({

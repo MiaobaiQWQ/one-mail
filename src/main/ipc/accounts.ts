@@ -29,7 +29,7 @@ export function registerAccountIpc(): void {
     let oauthToken: Awaited<ReturnType<typeof authorizeMicrosoftAccount>>['token'] | undefined
 
     if (input.authType === 'oauth2') {
-      const authorization = await authorizeMicrosoftAccount(input.oauthAuthorizationMode)
+      const authorization = await authorizeMicrosoftAccount({ mode: input.oauthAuthorizationMode })
       oauthToken = authorization.token
       nextInput = {
         ...input,
@@ -100,7 +100,7 @@ export function registerAccountIpc(): void {
       throw new Error('只有 Microsoft OAuth 账号需要重新授权。')
     }
 
-    const authorization = await authorizeMicrosoftAccount()
+    const authorization = await authorizeMicrosoftAccount({ loginHint: current.email })
     if (authorization.email.toLowerCase() !== current.email.toLowerCase()) {
       throw new Error(`请使用 ${current.email} 完成授权。`)
     }

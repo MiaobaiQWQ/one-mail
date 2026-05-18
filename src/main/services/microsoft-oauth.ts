@@ -28,6 +28,11 @@ type MicrosoftAuthorizationSession = {
   token: OAuthTokenPayload
 }
 
+type MicrosoftAuthorizationOptions = {
+  mode?: OAuthAuthorizationMode
+  loginHint?: string
+}
+
 export type MicrosoftAccessTokenResult = {
   accessToken: string
   loginHints: string[]
@@ -59,13 +64,19 @@ export const MICROSOFT_TOKEN_REFRESH_SKEW_MS = 10 * 60 * 1000
 export const MICROSOFT_LONG_OPERATION_REFRESH_SKEW_MS = 15 * 60 * 1000
 
 export async function authorizeMicrosoftAccount(
-  mode: OAuthAuthorizationMode = 'internal_browser'
+  options: MicrosoftAuthorizationOptions = {}
 ): Promise<MicrosoftAuthorizationSession> {
   const clientId = getMicrosoftClientId()
   const verifier = base64Url(randomBytes(48))
   const challenge = base64Url(createHash('sha256').update(verifier).digest())
   const state = base64Url(randomBytes(24))
-  const authorization = await waitForMicrosoftAuthorization(clientId, challenge, state, mode)
+  const authorization = await waitForMicrosoftAuthorization(
+    clientId,
+    challenge,
+    state,
+    options.mode ?? 'internal_browser',
+    options.loginHint
+  )
   const token = await requestMicrosoftToken({
     clientId,
     code: authorization.code,
@@ -154,7 +165,8 @@ function waitForMicrosoftAuthorization(
   clientId: string,
   codeChallenge: string,
   state: string,
-  mode: OAuthAuthorizationMode
+  mode: OAuthAuthorizationMode,
+  loginHint?: string
 ): Promise<AuthorizationResult> {
   return new Promise((resolve, reject) => {
     let redirectUri = ''
@@ -242,6 +254,10 @@ function waitForMicrosoftAuthorization(
         code_challenge_method: 'S256',
         prompt: 'consent'
       })
+      const trimmedLoginHint = loginHint?.trim()
+      if (trimmedLoginHint) {
+        params.set('login_hint', trimmedLoginHint)
+      }
       const authorizationUrl = `${MICROSOFT_AUTHORITY}/authorize?${params.toString()}`
 
       if (mode === 'copy_link') {
