@@ -157,18 +157,23 @@ export function MailList({
             <ListState destructive>{error}</ListState>
           ) : messages.length > 0 ? (
             <div>
-              {messages.map((message) => (
-                <MessageListItem
-                  key={message.id}
-                  message={message}
-                  locale={locale}
-                  selected={message.id === selectedMessageId}
-                  checked={selectedMessageIds.has(message.id)}
-                  selectionDisabled={selectionDisabled}
-                  onToggleSelection={(range) => onToggleMessageSelection?.(message.id, range)}
-                  onSelect={() => onSelectMessage(message.id)}
-                />
-              ))}
+              {messages.map((message) => {
+                const messageSelected = message.id === selectedMessageId
+                const messageChecked = selectedMessageIds.has(message.id)
+
+                return (
+                  <MessageListItem
+                    key={message.id}
+                    message={message}
+                    locale={locale}
+                    selected={messageSelected}
+                    checked={messageChecked}
+                    selectionDisabled={selectionDisabled}
+                    onToggleMessageSelection={onToggleMessageSelection}
+                    onSelectMessage={onSelectMessage}
+                  />
+                )
+              })}
               <LoadMoreState loading={loadingMore} hasMore={hasMore} />
             </div>
           ) : (
@@ -211,22 +216,22 @@ function LoadMoreState({
   return <div className="h-4 border-b" aria-hidden="true" />
 }
 
-function MessageListItem({
+const MessageListItem = React.memo(function MessageListItem({
   message,
   locale,
   selected,
   checked,
   selectionDisabled,
-  onToggleSelection,
-  onSelect
+  onToggleMessageSelection,
+  onSelectMessage
 }: {
   message: Message
   locale: AppLocale
   selected: boolean
   checked: boolean
   selectionDisabled?: boolean
-  onToggleSelection?: (range?: boolean) => void
-  onSelect: () => void
+  onToggleMessageSelection?: (messageId: string, range?: boolean) => void
+  onSelectMessage: (messageId: string) => void
 }): React.JSX.Element {
   const { t } = useI18n()
   const absoluteTime = formatAbsoluteTime(message.receivedAt)
@@ -248,7 +253,7 @@ function MessageListItem({
   function handleSelectClick(event: React.MouseEvent<HTMLDivElement>): void {
     if (hasSelectionInside(event.currentTarget)) return
 
-    onSelect()
+    onSelectMessage(message.id)
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
@@ -256,7 +261,7 @@ function MessageListItem({
     if (event.key !== 'Enter' && event.key !== ' ') return
 
     event.preventDefault()
-    onSelect()
+    onSelectMessage(message.id)
   }
 
   function handleCopyVerificationCode(event: React.MouseEvent<HTMLButtonElement>): void {
@@ -290,7 +295,7 @@ function MessageListItem({
           disabled={selectionDisabled}
           aria-label={t('mail.list.selectMessage', { subject: displaySubject })}
           onClick={(event) => event.stopPropagation()}
-          onCheckedChange={() => onToggleSelection?.(false)}
+          onCheckedChange={() => onToggleMessageSelection?.(message.id, false)}
           onKeyDown={(event) => {
             if (event.key === ' ') event.stopPropagation()
           }}
@@ -298,7 +303,7 @@ function MessageListItem({
             if (event.shiftKey) {
               event.preventDefault()
               event.stopPropagation()
-              onToggleSelection?.(true)
+              onToggleMessageSelection?.(message.id, true)
             }
           }}
         />
@@ -382,7 +387,7 @@ function MessageListItem({
       </span>
     </div>
   )
-}
+})
 
 function hasSelectionInside(element: HTMLElement): boolean {
   const selection = window.getSelection()

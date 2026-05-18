@@ -287,6 +287,15 @@ export function onAppUpdateStatus(callback: (status: AppUpdateStatus) => void): 
   return onStatus(callback)
 }
 
+export async function installAppUpdate(): Promise<boolean> {
+  const install = window.api?.updates?.install
+  if (typeof install !== 'function') {
+    return false
+  }
+
+  return install()
+}
+
 export async function loadAccounts(): Promise<Account[]> {
   const [accounts, accountStats] = await Promise.all([
     window.api.accounts.list(),

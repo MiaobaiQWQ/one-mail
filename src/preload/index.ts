@@ -78,6 +78,7 @@ const api = {
   updates: {
     check: () => ipcRenderer.invoke('updates/check'),
     status: () => ipcRenderer.invoke('updates/status'),
+    install: () => ipcRenderer.invoke('updates/install'),
     onStatus: (callback): (() => void) => {
       const listener = (_event, status): void => callback(status)
       ipcRenderer.on('updates/status', listener)

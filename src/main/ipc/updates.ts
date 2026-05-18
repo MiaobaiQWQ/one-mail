@@ -1,5 +1,9 @@
 import { ipcMain } from 'electron'
-import { checkForAppUpdates, getAppUpdateStatus } from '../services/auto-update'
+import {
+  checkForAppUpdates,
+  getAppUpdateStatus,
+  installDownloadedAppUpdate
+} from '../services/auto-update'
 import type { AppUpdateCheckResult, AppUpdateStatus } from './types'
 
 export function registerUpdateIpc(): void {
@@ -8,5 +12,8 @@ export function registerUpdateIpc(): void {
   })
   ipcMain.handle('updates/status', (): AppUpdateStatus => {
     return getAppUpdateStatus()
+  })
+  ipcMain.handle('updates/install', (): boolean => {
+    return installDownloadedAppUpdate()
   })
 }

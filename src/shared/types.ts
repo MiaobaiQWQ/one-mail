@@ -383,6 +383,7 @@ export type AppUpdateStatus = {
     | 'available'
     | 'downloading'
     | 'downloaded'
+    | 'installing'
     | 'not_available'
     | 'unsupported'
     | 'cancelled'
@@ -452,6 +453,7 @@ export type OneMailApi = {
   updates: {
     check: () => Promise<AppUpdateCheckResult>
     status: () => Promise<AppUpdateStatus>
+    install: () => Promise<boolean>
     onStatus: (callback: (status: AppUpdateStatus) => void) => () => void
   }
   system: {

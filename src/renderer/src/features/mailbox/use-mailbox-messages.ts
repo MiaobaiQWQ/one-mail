@@ -25,6 +25,8 @@ type MessageListPageState = {
   loadingMore: boolean
 }
 
+const MESSAGE_OPEN_SIDE_EFFECT_DELAY_MS = 80
+
 type UseMailboxMessagesInput = {
   selectedAccountId: string
   filters: MailFilterTag[]
@@ -82,7 +84,10 @@ export function useMailboxMessages({
   const markingReadMessageIdsRef = React.useRef<Set<string>>(new Set())
   const prefetchingVerificationMessageIdsRef = React.useRef<Set<string>>(new Set())
 
-  const selectedMessage = messages.find((message) => message.id === selectedMessageId)
+  const messagesById = React.useMemo(() => {
+    return new Map(messages.map((message) => [message.id, message]))
+  }, [messages])
+  const selectedMessage = selectedMessageId ? messagesById.get(selectedMessageId) : undefined
 
   const beginLoadingBody = React.useCallback((message: Message): boolean => {
     if (message.bodyLoaded || loadingBodyMessageIdsRef.current.has(message.id)) return false
@@ -357,19 +362,16 @@ export function useMailboxMessages({
   const selectMessage = React.useCallback(
     (messageId: string): void => {
       setSelectedMessageId(messageId)
-      const message = messages.find((item) => item.id === messageId)
-      if (message) markMessageReadOnOpen(message)
-      if (!message?.detailLoaded) loadMessageDetail(messageId)
     },
-    [loadMessageDetail, markMessageReadOnOpen, messages]
+    []
   )
 
   React.useEffect(() => {
     if (!selectedMessage || loading) return
 
-    markMessageReadOnOpen(selectedMessage)
-
     const timer = window.setTimeout(() => {
+      markMessageReadOnOpen(selectedMessage)
+
       if (!selectedMessage.detailLoaded) {
         if (loadingMessageId !== selectedMessage.id) loadMessageDetail(selectedMessage.id)
         return
@@ -378,7 +380,7 @@ export function useMailboxMessages({
       if (shouldAutoLoadBody(selectedMessage) && loadingBodyMessageId !== selectedMessage.id) {
         loadMessageBodyForReader(selectedMessage)
       }
-    }, 0)
+    }, MESSAGE_OPEN_SIDE_EFFECT_DELAY_MS)
 
     return () => window.clearTimeout(timer)
   }, [

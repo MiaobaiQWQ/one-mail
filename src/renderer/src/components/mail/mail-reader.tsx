@@ -44,6 +44,14 @@ import {
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
 
 const REMOTE_IMAGES_HELP_URL = 'https://huzhihui.com/blog/click-load-images-ip-leak-email-tracking'
+const MAIL_HTML_PREPARE_DELAY_MS = 40
+
+type PreparedMailHtmlState = {
+  messageId: string
+  sourceHtml: string
+  allowExternalImages: boolean
+  result: PreparedMailHtml
+}
 
 type MailReaderProps = {
   message: Message
@@ -86,13 +94,16 @@ export function MailReader({
   })
   const externalContentAllowed =
     externalContentState.messageId === message.id && externalContentState.allowed
-  const preparedHtml = React.useMemo(
-    () =>
-      canShowHtml
-        ? prepareMailHtml(message.html ?? '', { allowExternalImages: externalContentAllowed })
-        : null,
-    [canShowHtml, externalContentAllowed, message.html]
-  )
+  const htmlSource = message.html ?? ''
+  const [preparedHtmlState, setPreparedHtmlState] =
+    React.useState<PreparedMailHtmlState | null>(null)
+  const preparedHtml =
+    canShowHtml &&
+    preparedHtmlState?.messageId === message.id &&
+    preparedHtmlState.sourceHtml === htmlSource &&
+    preparedHtmlState.allowExternalImages === externalContentAllowed
+      ? preparedHtmlState.result
+      : null
   const blockedCount =
     preparedHtml?.blockedImageResourceCount ?? preparedHtml?.blockedResourceCount ?? 0
   const canLoadFullContent = canShowHtml && !externalContentAllowed && blockedCount > 0
@@ -105,6 +116,28 @@ export function MailReader({
   const displayRecipientAddress = message.to ?? recipientAddress
   const displaySubject = getDisplaySubject(message, t)
   const displaySender = getDisplaySender(message, t)
+
+  React.useEffect(() => {
+    if (!canShowHtml) return
+
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      const result = prepareMailHtml(htmlSource, { allowExternalImages: externalContentAllowed })
+      if (!cancelled) {
+        setPreparedHtmlState({
+          messageId: message.id,
+          sourceHtml: htmlSource,
+          allowExternalImages: externalContentAllowed,
+          result
+        })
+      }
+    }, MAIL_HTML_PREPARE_DELAY_MS)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [canShowHtml, externalContentAllowed, htmlSource, message.id])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -313,6 +346,10 @@ function MessageBody({
   onLoadBody: () => void
 }): React.JSX.Element {
   if (!canShowHtml && loadingBody) {
+    return <MessageBodySkeleton />
+  }
+
+  if (canShowHtml && !preparedHtml) {
     return <MessageBodySkeleton />
   }
 

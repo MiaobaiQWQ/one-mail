@@ -1,5 +1,5 @@
 import type { AppSettings, AppUpdateStatus, SystemInfo } from '../../../../shared/types'
-import { Inbox, Plus, Settings, Upload } from 'lucide-react'
+import { Inbox, Plus, RotateCcw, Settings, Upload } from 'lucide-react'
 
 import { ThemeToggleButton } from '@renderer/components/theme/theme-toggle-button'
 import { Button } from '@renderer/components/ui/button'
@@ -110,7 +110,8 @@ export function StatusBar({
   syncNotice,
   updateStatus,
   onRevealDatabase,
-  onOpenVersion
+  onOpenVersion,
+  onInstallUpdate
 }: {
   systemInfo: SystemInfo | null
   settings: AppSettings | null
@@ -120,6 +121,7 @@ export function StatusBar({
   updateStatus: AppUpdateStatus | null
   onRevealDatabase: () => void
   onOpenVersion: () => void
+  onInstallUpdate: () => void
 }): React.JSX.Element {
   const { t } = useI18n()
   const syncText = formatSyncNotice(syncNotice, t)
@@ -155,6 +157,16 @@ export function StatusBar({
             {updateText}
           </span>
         ) : null}
+        {updateStatus?.state === 'downloaded' ? (
+          <Button
+            className="h-5 rounded-sm px-1.5 text-xs"
+            size="xs"
+            onClick={onInstallUpdate}
+          >
+            <RotateCcw data-icon="inline-start" />
+            {t('status.updateRestart')}
+          </Button>
+        ) : null}
         <span>{t('status.accounts', { count: accountCount })}</span>
         <span>{t('status.messages', { count: messageCount })}</span>
         <span>{t('status.cacheDays', { days: settings?.syncWindowDays ?? 90 })}</span>
@@ -185,6 +197,7 @@ function formatUpdateStatus(
     })
   }
   if (status.state === 'downloaded') return t('status.updateDownloaded')
+  if (status.state === 'installing') return t('status.updateInstalling')
   if (status.state === 'available') {
     return t('status.updateAvailable', { version: status.latestVersion ?? '' })
   }

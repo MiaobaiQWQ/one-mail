@@ -28,9 +28,12 @@ export function startAutoUpdateChecks(): void {
   installAutoUpdaterErrorHandler(autoUpdater)
 
   const checkForUpdates = (): void => {
-    autoUpdater.checkForUpdatesAndNotify().catch((error) => {
-      logUpdateError(error)
-    })
+    void autoUpdater
+      .checkForUpdates()
+      .then((result) => result?.downloadPromise?.catch(() => undefined))
+      .catch((error) => {
+        logUpdateError(error)
+      })
   }
 
   checkForUpdates()
@@ -98,6 +101,22 @@ export async function checkForAppUpdates(): Promise<AppUpdateCheckResult> {
 
 export function getAppUpdateStatus(): AppUpdateStatus {
   return lastUpdateStatus ?? createUpdateStatus('idle', { message: '尚未检查更新。' })
+}
+
+export function installDownloadedAppUpdate(): boolean {
+  const status = getAppUpdateStatus()
+  if (status.state !== 'downloaded') {
+    return false
+  }
+
+  updateStatus('installing', {
+    latestVersion: status.latestVersion,
+    message: '正在重启并安装更新。',
+    progress: status.progress
+  })
+
+  getAutoUpdater().quitAndInstall()
+  return true
 }
 
 function installAutoUpdaterErrorHandler(autoUpdater: AppUpdater): void {

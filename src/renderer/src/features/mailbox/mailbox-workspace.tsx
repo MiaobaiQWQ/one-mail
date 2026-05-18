@@ -30,6 +30,7 @@ import {
   deleteOutboxMessage,
   getAppUpdateStatus,
   importSqlBackup,
+  installAppUpdate,
   loadAccounts,
   loadInitialData,
   loadMessageDetail,
@@ -40,7 +41,6 @@ import {
   onAppUpdateStatus,
   onMailboxChanged,
   openAddAccountWindow,
-  openExternalUrl,
   reauthorizeAccount,
   removeAccount,
   revealDatabaseInFileManager,
@@ -90,6 +90,9 @@ export function MailboxWorkspace(): React.JSX.Element {
   const [filters, setFilters] = React.useState<MailFilterTag[]>([])
   const [searchKeyword, setSearchKeyword] = React.useState('')
   const [dialogKind, setDialogKind] = React.useState<DialogKind>(null)
+  const [settingsInitialSection, setSettingsInitialSection] = React.useState<'general' | 'about'>(
+    'general'
+  )
   const [dialogAccountId, setDialogAccountId] = React.useState<string | null>(null)
   const [warningAccountId, setWarningAccountId] = React.useState<string | null>(null)
   const [outboxOpen, setOutboxOpen] = React.useState(false)
@@ -703,7 +706,10 @@ export function MailboxWorkspace(): React.JSX.Element {
       <div className="relative shrink-0">
         <TitleBar
           onAddAccount={handleOpenAddAccountWindow}
-          onOpenSettings={() => setDialogKind('settings')}
+          onOpenSettings={() => {
+            setSettingsInitialSection('general')
+            setDialogKind('settings')
+          }}
         />
       </div>
 
@@ -799,7 +805,7 @@ export function MailboxWorkspace(): React.JSX.Element {
                 <MailReader
                   message={selectedMessage}
                   recipientAddress={selectedMessageAccount?.address ?? selectedAccount.address}
-                  loading={loadingMessageId === selectedMessage.id}
+                  loading={!selectedMessage.detailLoaded || loadingMessageId === selectedMessage.id}
                   loadingBody={loadingBodyMessageId === selectedMessage.id}
                   downloadingAttachmentIds={downloadingAttachmentIds}
                   actionPending={composerPending}
@@ -842,7 +848,11 @@ export function MailboxWorkspace(): React.JSX.Element {
           void revealDatabaseInFileManager()
         }}
         onOpenVersion={() => {
-          void openExternalUrl('https://github.com/zhihui-hu/one-mail')
+          setSettingsInitialSection('about')
+          setDialogKind('settings')
+        }}
+        onInstallUpdate={() => {
+          void installAppUpdate()
         }}
       />
 
@@ -891,6 +901,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         settings={settings}
         systemInfo={systemInfo}
         updateStatus={updateStatus}
+        initialSection={settingsInitialSection}
         onOpenChange={(open) => setDialogKind(open ? 'settings' : null)}
         onSubmit={handleUpdateSettings}
         onImported={reloadInitialData}

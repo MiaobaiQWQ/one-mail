@@ -12,6 +12,7 @@ import {
   LoaderCircle,
   Power,
   RefreshCcw,
+  RotateCcw,
   ShieldCheck,
   Upload
 } from 'lucide-react'
@@ -23,6 +24,7 @@ import {
   checkForAppUpdates,
   exportSqlBackup,
   importSqlBackup,
+  installAppUpdate,
   openExternalUrl,
   revealPathInFileManager
 } from '@renderer/lib/api'
@@ -63,6 +65,7 @@ type SettingsDialogProps = {
   settings: AppSettings | null
   systemInfo: SystemInfo | null
   updateStatus: AppUpdateStatus | null
+  initialSection?: SettingsSection
   onOpenChange: (open: boolean) => void
   onSubmit: (input: SettingsUpdateInput) => Promise<void>
   onImported?: () => Promise<void> | void
@@ -110,6 +113,7 @@ export function SettingsDialog({
   settings,
   systemInfo,
   updateStatus,
+  initialSection = 'general',
   onOpenChange,
   onSubmit,
   onImported
@@ -200,8 +204,9 @@ export function SettingsDialog({
     const nextValues = toFormValues(settings)
     lastSavedValuesRef.current = nextValues
     form.reset(nextValues)
+    setSection(initialSection)
     wasOpenRef.current = true
-  }, [form, open, settings])
+  }, [form, initialSection, open, settings])
 
   React.useEffect(() => {
     if (!open) return
@@ -364,6 +369,7 @@ export function SettingsDialog({
               updateStatus={updateStatus}
               updateResult={updateResult}
               onCheckUpdates={handleCheckUpdates}
+              onInstallUpdate={installAppUpdate}
             />
           )}
         </div>
@@ -539,12 +545,14 @@ function AboutSettings({
   systemInfo,
   updateStatus,
   updateResult,
-  onCheckUpdates
+  onCheckUpdates,
+  onInstallUpdate
 }: {
   systemInfo: SystemInfo | null
   updateStatus: AppUpdateStatus | null
   updateResult: AppUpdateCheckResult | null
   onCheckUpdates: () => Promise<void>
+  onInstallUpdate: () => Promise<boolean>
 }): React.JSX.Element {
   const { t } = useI18n()
   const version = systemInfo?.appVersion ? `v${systemInfo.appVersion}` : t('common.loading')
@@ -591,7 +599,7 @@ function AboutSettings({
         />
 
         {updateStatus && updateStatus.state !== 'idle' ? (
-          <UpdateStatusView status={updateStatus} />
+          <UpdateStatusView status={updateStatus} onInstallUpdate={onInstallUpdate} />
         ) : updateResult ? (
           <UpdateResultView result={updateResult} />
         ) : null}
@@ -600,12 +608,19 @@ function AboutSettings({
   )
 }
 
-function UpdateStatusView({ status }: { status: AppUpdateStatus }): React.JSX.Element {
+function UpdateStatusView({
+  status,
+  onInstallUpdate
+}: {
+  status: AppUpdateStatus
+  onInstallUpdate: () => Promise<boolean>
+}): React.JSX.Element {
   const { t } = useI18n()
   const variant = status.state === 'error' ? 'destructive' : 'default'
   const showProgress = status.state === 'downloading' || Boolean(status.progress)
   const progressValue = status.progress?.percent ?? (status.state === 'downloaded' ? 100 : 0)
   const Icon = isUpdateBusy(status) ? LoaderCircle : ShieldCheck
+  const canInstall = status.state === 'downloaded'
 
   return (
     <Alert className="py-2 text-xs" variant={variant}>
@@ -620,6 +635,18 @@ function UpdateStatusView({ status }: { status: AppUpdateStatus }): React.JSX.El
               {formatUpdateProgress(status.progress, t)}
             </span>
           </span>
+        ) : null}
+        {canInstall ? (
+          <Button
+            className="w-fit"
+            size="sm"
+            onClick={() => {
+              void onInstallUpdate()
+            }}
+          >
+            <RotateCcw data-icon="inline-start" />
+            {t('settings.about.updateRestart')}
+          </Button>
         ) : null}
       </AlertDescription>
     </Alert>
@@ -672,7 +699,8 @@ function isUpdateBusy(status: AppUpdateStatus | null): boolean {
   return (
     status?.state === 'checking' ||
     status?.state === 'available' ||
-    status?.state === 'downloading'
+    status?.state === 'downloading' ||
+    status?.state === 'installing'
   )
 }
 
@@ -683,6 +711,7 @@ function getUpdateStatusTitle(
   if (status.state === 'checking') return t('settings.about.updateChecking')
   if (status.state === 'downloading') return t('settings.about.updateDownloading')
   if (status.state === 'downloaded') return t('settings.about.updateDownloaded')
+  if (status.state === 'installing') return t('settings.about.updateInstalling')
   if (status.state === 'available') {
     return status.latestVersion
       ? `${t('settings.about.updateAvailable')} v${status.latestVersion}`
