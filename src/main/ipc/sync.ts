@@ -7,6 +7,7 @@ import {
 } from '../db/repositories/sync.repository'
 import type { AccountMailboxSyncMode } from '../mail/imap-sync'
 import { notifyNewMail } from '../services/notification-center'
+import { scheduleImapTask } from '../services/imap-scheduler'
 import type { AccountSyncRunResult } from './types'
 
 export function registerSyncIpc(): void {
@@ -51,7 +52,10 @@ async function syncAccountWithNotification(
   reason: 'manual',
   mode: AccountMailboxSyncMode
 ): Promise<AccountSyncResult> {
-  const result = await syncAccountNow(accountId, mode)
+  const host = getAccountHost(accountId)
+  const result = await scheduleImapTask(host, getSyncPriority(mode), () =>
+    syncAccountNow(accountId, mode)
+  )
   if (mode !== 'initial') {
     notifyNewMail({
       accountId,
@@ -60,6 +64,20 @@ async function syncAccountWithNotification(
     })
   }
   return result
+}
+
+function getAccountHost(accountId: number): string {
+  const row = getDatabase()
+    .prepare<{
+      imap_host: string
+    }>('SELECT imap_host FROM onemail_mail_accounts WHERE account_id = :accountId')
+    .get({ accountId })
+
+  return row?.imap_host ?? `account:${accountId}`
+}
+
+function getSyncPriority(mode: AccountMailboxSyncMode): number {
+  return mode === 'initial' ? 90 : 80
 }
 
 function normalizeSyncMode(mode: unknown): AccountMailboxSyncMode {

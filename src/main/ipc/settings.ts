@@ -6,7 +6,11 @@ import type { SettingsUpdateInput } from './types'
 
 export function registerSettingsIpc(): void {
   ipcMain.handle('settings/get', () => getSettings())
-  ipcMain.handle('settings/update', (_event, input: SettingsUpdateInput) => updateSettings(input))
+  ipcMain.handle('settings/update', (_event, input: SettingsUpdateInput) => {
+    const settings = updateSettings(input)
+    refreshMailboxWatchers()
+    return settings
+  })
   ipcMain.handle('settings/exportSql', () => exportDatabaseSqlBackup())
   ipcMain.handle('settings/importSql', async () => {
     const result = await importDatabaseSqlBackup()

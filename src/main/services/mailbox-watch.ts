@@ -1,6 +1,7 @@
 import { networkInterfaces } from 'node:os'
 import { BrowserWindow, net, powerMonitor } from 'electron'
 import { listAccounts, markAccountAuthError } from '../db/repositories/account.repository'
+import { getSettings } from '../db/repositories/settings.repository'
 import { syncAccountNow, type AccountSyncResult } from '../db/repositories/sync.repository'
 import { authenticateImapSession } from '../mail/imap-auth'
 import { isImapAuthErrorMessage } from '../mail/imap-errors'
@@ -10,6 +11,7 @@ import {
   type IdleMailboxStatus,
   type IdleWatchMailbox
 } from '../mail/imap-idle-session'
+import { scheduleImapTask } from './imap-scheduler'
 import { notifyNewMail } from './notification-center'
 
 type WatchTask = {
@@ -19,6 +21,7 @@ type WatchTask = {
   session?: ImapIdleSession
   retryCount: number
   failureCount: number
+  lastWarningKey?: string
   watchMailboxes: IdleWatchMailbox[]
   lastStatuses: Map<string, IdleMailboxStatus>
 }
@@ -36,29 +39,46 @@ type MailboxChangedEvent = {
   changedAt: string
 }
 
-type ForegroundSyncReason = 'startup' | 'focus' | 'show' | 'restore' | 'resume' | 'network'
+type ForegroundSyncReason =
+  | 'startup'
+  | 'focus'
+  | 'show'
+  | 'restore'
+  | 'resume'
+  | 'network'
+  | 'interval'
+type SyncableAccount = ReturnType<typeof listAccounts>[number]
 
 const FALLBACK_POLL_MS = 5 * 60 * 1000
 const IDLE_REFRESH_MS = FALLBACK_POLL_MS
 const START_STAGGER_MS = 1500
 const MIN_RETRY_MS = 5000
 const MAX_RETRY_MS = 5 * 60 * 1000
-const MAX_PARALLEL_SYNC = 3
 const FOREGROUND_SYNC_COOLDOWN_MS = 60 * 1000
 const MAX_WATCH_FAILURES = 10
+const NETWORK_WATCH_FAILURES_BEFORE_SUSPEND = 3
 const NETWORK_CHECK_INTERVAL_MS = 5000
 const NETWORK_CHANGE_SETTLE_MS = 1500
+const STARTUP_FOREGROUND_SYNC_LIMIT = 3
+const ACTIVE_FOREGROUND_SYNC_LIMIT = 5
+const ACTIVE_WATCHER_LIMIT = 5
+const FOREGROUND_SYNC_STALE_MS = 10 * 60 * 1000
+const PRIORITY_MANUAL_SYNC = 80
+const PRIORITY_FOREGROUND_SYNC = 60
+const PRIORITY_NEW_MAIL_SYNC = 50
+const PRIORITY_WATCH_CONNECT = 20
 
 const tasks = new Map<number, WatchTask>()
 const runningSyncs = new Map<number, Promise<AccountSyncResult>>()
 const suspendedWatchSignatures = new Map<number, WatchSuspension>()
-const syncQueue: Array<() => void> = []
 let initialized = false
 let foregroundSyncRunning = false
 let lastForegroundSyncAt = 0
 let pendingForegroundSyncReason: ForegroundSyncReason | undefined
 let networkCheckTimer: NodeJS.Timeout | undefined
 let pendingNetworkChangeTimer: NodeJS.Timeout | undefined
+let foregroundSyncTimer: NodeJS.Timeout | undefined
+let foregroundSyncIntervalMs = 0
 let lastNetworkSignature = ''
 
 export function startMailboxWatchers(): void {
@@ -66,6 +86,7 @@ export function startMailboxWatchers(): void {
   initialized = true
   startNetworkChangeWatch()
   refreshMailboxWatchers()
+  refreshForegroundSyncTimer()
 
   powerMonitor.on('resume', () => {
     restartMailboxWatchers()
@@ -98,9 +119,8 @@ export function requestForegroundMailboxSync(reason: ForegroundSyncReason): void
 }
 
 export function refreshMailboxWatchers(): void {
-  const accounts = listAccounts().filter(
-    (account) => isWatchableAccount(account) && !isWatchSuspended(account)
-  )
+  refreshForegroundSyncTimer()
+  const accounts = getWatcherAccounts()
   const activeAccounts = new Map(accounts.map((account) => [account.accountId, account]))
 
   for (const [accountId, task] of tasks) {
@@ -118,6 +138,7 @@ export function refreshMailboxWatchers(): void {
       stopped: false,
       retryCount: 0,
       failureCount: 0,
+      lastWarningKey: undefined,
       watchMailboxes: [{ path: 'INBOX', role: 'inbox' }],
       lastStatuses: new Map()
     }
@@ -131,6 +152,7 @@ export function refreshMailboxWatchers(): void {
 
 export function stopMailboxWatchers(): void {
   stopNetworkChangeWatch()
+  stopForegroundSyncTimer()
   for (const accountId of tasks.keys()) {
     stopMailboxWatcher(accountId)
   }
@@ -161,7 +183,14 @@ async function runMailboxWatcher(task: WatchTask): Promise<void> {
         return
       }
 
-      const session = await ImapIdleSession.connect(account)
+      const session = await scheduleImapTask(account.imapHost, PRIORITY_WATCH_CONNECT, () => {
+        if (task.stopped) throw new Error('邮箱监听已停止。')
+        return ImapIdleSession.connect(account)
+      })
+      if (task.stopped) {
+        await session.logout().catch(() => undefined)
+        return
+      }
       task.session = session
       task.retryCount = 0
 
@@ -180,7 +209,7 @@ async function runMailboxWatcher(task: WatchTask): Promise<void> {
     } catch (error) {
       if (!task.stopped) {
         const message = error instanceof Error ? error.message : '邮箱监听失败。'
-        console.warn(`[mailbox-watch] account ${task.accountId}: ${message}`)
+        warnWatchFailure(task, message)
         if (isImapAuthErrorMessage(message)) {
           markAccountAuthError(task.accountId, message)
           suspendMailboxWatcher(task, 'auth')
@@ -199,7 +228,11 @@ async function runMailboxWatcher(task: WatchTask): Promise<void> {
 function markWatchFailure(task: WatchTask, message: string): boolean {
   task.failureCount += 1
 
-  if (task.failureCount < MAX_WATCH_FAILURES) return false
+  const maxFailures = isNetworkFailureMessage(message)
+    ? NETWORK_WATCH_FAILURES_BEFORE_SUSPEND
+    : MAX_WATCH_FAILURES
+
+  if (task.failureCount < maxFailures) return false
 
   console.warn(
     `[mailbox-watch] account ${task.accountId}: stopped after ${task.failureCount} consecutive failures. Last error: ${message}`
@@ -311,8 +344,8 @@ async function syncChangedMailbox(
 ): Promise<void> {
   const result =
     reason === 'idle' && (idleReason === 'exists' || idleReason === 'recent')
-      ? await runLimitedAccountSync(accountId, syncNewInboxMessagesNow)
-      : await runLimitedSync(accountId)
+      ? await runLimitedAccountSync(accountId, PRIORITY_NEW_MAIL_SYNC, syncNewInboxMessagesNow)
+      : await runLimitedSync(accountId, PRIORITY_FOREGROUND_SYNC)
   notifyNewMail({
     accountId,
     reason,
@@ -326,16 +359,14 @@ async function syncChangedMailbox(
 }
 
 async function syncForegroundMailboxes(reason: ForegroundSyncReason): Promise<void> {
-  const accounts = listAccounts().filter(
-    (account) => isWatchableAccount(account) && !isWatchSuspended(account)
-  )
+  const accounts = getForegroundSyncAccounts(reason)
 
   if (accounts.length === 0) return
 
   await Promise.all(
     accounts.map(async (account) => {
       try {
-        const result = await runLimitedSync(account.accountId)
+        const result = await runLimitedSync(account.accountId, PRIORITY_FOREGROUND_SYNC)
 
         notifyNewMail({
           accountId: account.accountId,
@@ -360,8 +391,11 @@ async function syncForegroundMailboxes(reason: ForegroundSyncReason): Promise<vo
   refreshMailboxWatchers()
 }
 
-async function runLimitedSync(accountId: number): Promise<AccountSyncResult> {
-  return runLimitedAccountSync(accountId, syncAccountNow)
+async function runLimitedSync(
+  accountId: number,
+  priority = PRIORITY_MANUAL_SYNC
+): Promise<AccountSyncResult> {
+  return runLimitedAccountSync(accountId, priority, syncAccountNow)
 }
 
 async function syncNewInboxMessagesNow(accountId: number): Promise<AccountSyncResult> {
@@ -371,6 +405,7 @@ async function syncNewInboxMessagesNow(accountId: number): Promise<AccountSyncRe
 
 async function runLimitedAccountSync(
   accountId: number,
+  priority: number,
   syncAccount: (accountId: number) => Promise<AccountSyncResult>
 ): Promise<AccountSyncResult> {
   const existingSync = runningSyncs.get(accountId)
@@ -378,15 +413,10 @@ async function runLimitedAccountSync(
     return existingSync
   }
 
-  if (runningSyncs.size >= MAX_PARALLEL_SYNC) {
-    await new Promise<void>((resolve) => {
-      syncQueue.push(resolve)
-    })
-    const queuedExistingSync = runningSyncs.get(accountId)
-    if (queuedExistingSync) return queuedExistingSync
-  }
+  const account = listAccounts().find((item) => item.accountId === accountId)
+  const host = account?.imapHost ?? `account:${accountId}`
 
-  const syncPromise = syncAccount(accountId)
+  const syncPromise = scheduleImapTask(host, priority, () => syncAccount(accountId))
   runningSyncs.set(accountId, syncPromise)
   try {
     await syncPromise
@@ -394,10 +424,52 @@ async function runLimitedAccountSync(
     if (runningSyncs.get(accountId) === syncPromise) {
       runningSyncs.delete(accountId)
     }
-    syncQueue.shift()?.()
   }
 
   return syncPromise
+}
+
+function getForegroundSyncAccounts(reason: ForegroundSyncReason): SyncableAccount[] {
+  const accounts = getSyncableAccounts().sort(compareForegroundSyncPriority)
+
+  if (reason === 'network') return accounts.slice(0, ACTIVE_FOREGROUND_SYNC_LIMIT)
+  if (reason === 'startup') return accounts.slice(0, STARTUP_FOREGROUND_SYNC_LIMIT)
+
+  return accounts.filter(isForegroundSyncDue).slice(0, ACTIVE_FOREGROUND_SYNC_LIMIT)
+}
+
+function getWatcherAccounts(): SyncableAccount[] {
+  return getSyncableAccounts().sort(compareWatcherPriority).slice(0, ACTIVE_WATCHER_LIMIT)
+}
+
+function getSyncableAccounts(): SyncableAccount[] {
+  return listAccounts().filter(
+    (account) => isWatchableAccount(account) && !isWatchSuspended(account)
+  )
+}
+
+function compareWatcherPriority(left: SyncableAccount, right: SyncableAccount): number {
+  return compareForegroundSyncPriority(left, right)
+}
+
+function compareForegroundSyncPriority(left: SyncableAccount, right: SyncableAccount): number {
+  const leftTime = getLastSyncTime(left)
+  const rightTime = getLastSyncTime(right)
+
+  if (leftTime !== rightTime) return leftTime - rightTime
+  return left.accountId - right.accountId
+}
+
+function isForegroundSyncDue(account: SyncableAccount): boolean {
+  const lastSyncTime = getLastSyncTime(account)
+  return lastSyncTime === 0 || Date.now() - lastSyncTime >= FOREGROUND_SYNC_STALE_MS
+}
+
+function getLastSyncTime(account: SyncableAccount): number {
+  if (!account.lastSyncAt) return 0
+
+  const time = new Date(account.lastSyncAt).getTime()
+  return Number.isNaN(time) ? 0 : time
 }
 
 function getWatchSignature(account: ReturnType<typeof listAccounts>[number]): string {
@@ -419,6 +491,29 @@ function isWatchableAccount(account: ReturnType<typeof listAccounts>[number]): b
     account.credentialState === 'stored' &&
     account.status !== 'auth_error' &&
     account.status !== 'disabled'
+  )
+}
+
+function warnWatchFailure(task: WatchTask, message: string): void {
+  const warningKey = normalizeWarningKey(message)
+  const shouldWarn =
+    task.failureCount === 0 || task.failureCount === NETWORK_WATCH_FAILURES_BEFORE_SUSPEND - 1
+
+  if (!shouldWarn && task.lastWarningKey === warningKey) return
+
+  task.lastWarningKey = warningKey
+  console.warn(`[mailbox-watch] account ${task.accountId}: ${message}`)
+}
+
+function normalizeWarningKey(message: string): string {
+  if (isNetworkFailureMessage(message)) return 'network'
+  if (isImapAuthErrorMessage(message)) return 'auth'
+  return message
+}
+
+function isNetworkFailureMessage(message: string): boolean {
+  return /IMAP 服务器响应超时|IMAP 服务器未返回有效响应|连接 IMAP 服务器超时|网络|ETIMEDOUT|ENOTFOUND|EHOSTUNREACH|ENETUNREACH/i.test(
+    message
   )
 }
 
@@ -459,6 +554,36 @@ function stopNetworkChangeWatch(): void {
   }
 
   lastNetworkSignature = ''
+}
+
+function refreshForegroundSyncTimer(): void {
+  const intervalMs = getForegroundSyncIntervalMs()
+  if (intervalMs === foregroundSyncIntervalMs && (intervalMs === 0 || foregroundSyncTimer)) return
+
+  stopForegroundSyncTimer()
+  foregroundSyncIntervalMs = intervalMs
+
+  if (intervalMs <= 0) return
+
+  foregroundSyncTimer = setInterval(() => {
+    requestForegroundMailboxSync('interval')
+  }, intervalMs)
+  foregroundSyncTimer.unref?.()
+}
+
+function stopForegroundSyncTimer(): void {
+  if (foregroundSyncTimer) {
+    clearInterval(foregroundSyncTimer)
+    foregroundSyncTimer = undefined
+  }
+  foregroundSyncIntervalMs = 0
+}
+
+function getForegroundSyncIntervalMs(): number {
+  const minutes = getSettings().syncIntervalMinutes
+  if (!Number.isFinite(minutes) || minutes <= 0) return 0
+
+  return minutes * 60 * 1000
 }
 
 function checkNetworkSignatureChanged(): void {
