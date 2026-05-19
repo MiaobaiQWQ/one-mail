@@ -800,7 +800,7 @@ export function MailboxWorkspace(): React.JSX.Element {
           <ResizableHandle />
 
           <ResizablePanel id="reader" minSize="420px">
-            <article className="flex h-full min-h-0 min-w-0 flex-col overflow-auto">
+            <article className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
               {selectedMessage ? (
                 <MailReader
                   message={selectedMessage}

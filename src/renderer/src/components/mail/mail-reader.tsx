@@ -138,7 +138,7 @@ export function MailReader({
   }, [canShowHtml, externalContentAllowed, htmlSource, message.id])
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-background">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
       {canShowHtml ? (
         <header className="app-drag-region flex h-10 shrink-0 items-center gap-3 border-b bg-card/60 px-4 text-xs">
           <div className="flex min-w-0 flex-1 items-center gap-2 text-muted-foreground">
@@ -179,75 +179,73 @@ export function MailReader({
         </header>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-auto">
-        <article className="flex w-full min-w-0 flex-col px-5 py-4">
-          <section className="mb-3 border-b pb-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base font-semibold leading-snug tracking-normal">
-                  {displaySubject}
-                </h2>
-                <TooltipProvider>
-                  <div className="mt-2 flex flex-col gap-0.5 text-xs text-muted-foreground">
-                    <MetaLine
-                      label={t('mail.reader.from')}
-                      value={formatAddress(displaySender, message.fromAddress)}
-                    />
-                    <MetaLine label={t('mail.reader.to')} value={displayRecipientAddress} />
-                    {message.cc ? (
-                      <MetaLine label={t('mail.reader.cc')} value={message.cc} />
-                    ) : null}
-                  </div>
-                </TooltipProvider>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-2">
-                <div
-                  className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
-                  title={formatAbsoluteTime(message.receivedAt)}
-                >
-                  {formatRelativeTime(message.receivedAt, locale)}
+      <article className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <section className="shrink-0 border-b px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-semibold leading-snug tracking-normal">
+                {displaySubject}
+              </h2>
+              <TooltipProvider>
+                <div className="mt-2 flex flex-col gap-0.5 text-xs text-muted-foreground">
+                  <MetaLine
+                    label={t('mail.reader.from')}
+                    value={formatAddress(displaySender, message.fromAddress)}
+                  />
+                  <MetaLine label={t('mail.reader.to')} value={displayRecipientAddress} />
+                  {message.cc ? <MetaLine label={t('mail.reader.cc')} value={message.cc} /> : null}
                 </div>
-                <TooltipProvider>
-                  <div className="flex items-center gap-1">
-                    <MailActionButton
-                      label={t('mail.reader.reply')}
-                      disabled={actionPending}
-                      onClick={onReply}
-                    >
-                      {actionPending ? (
-                        <Loader2 className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Reply aria-hidden="true" />
-                      )}
-                    </MailActionButton>
-                    <MailActionButton
-                      label={t('mail.reader.forward')}
-                      disabled={actionPending}
-                      onClick={onForward}
-                    >
-                      {actionPending ? (
-                        <Loader2 className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Forward aria-hidden="true" />
-                      )}
-                    </MailActionButton>
-                    <MailActionButton
-                      label={t('common.delete')}
-                      disabled={deleting}
-                      onClick={onDelete}
-                    >
-                      {deleting ? (
-                        <Loader2 className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Trash2 aria-hidden="true" />
-                      )}
-                    </MailActionButton>
-                  </div>
-                </TooltipProvider>
-              </div>
+              </TooltipProvider>
             </div>
-          </section>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <div
+                className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
+                title={formatAbsoluteTime(message.receivedAt)}
+              >
+                {formatRelativeTime(message.receivedAt, locale)}
+              </div>
+              <TooltipProvider>
+                <div className="flex items-center gap-1">
+                  <MailActionButton
+                    label={t('mail.reader.reply')}
+                    disabled={actionPending}
+                    onClick={onReply}
+                  >
+                    {actionPending ? (
+                      <Loader2 className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Reply aria-hidden="true" />
+                    )}
+                  </MailActionButton>
+                  <MailActionButton
+                    label={t('mail.reader.forward')}
+                    disabled={actionPending}
+                    onClick={onForward}
+                  >
+                    {actionPending ? (
+                      <Loader2 className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Forward aria-hidden="true" />
+                    )}
+                  </MailActionButton>
+                  <MailActionButton
+                    label={t('common.delete')}
+                    disabled={deleting}
+                    onClick={onDelete}
+                  >
+                    {deleting ? (
+                      <Loader2 className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Trash2 aria-hidden="true" />
+                    )}
+                  </MailActionButton>
+                </div>
+              </TooltipProvider>
+            </div>
+          </div>
+        </section>
 
+        <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
           {loading && !message.detailLoaded ? (
             <section className="text-xs text-muted-foreground">
               {t('mail.reader.loadingDetails')}
@@ -263,17 +261,17 @@ export function MailReader({
               onLoadBody={onLoadBody}
             />
           )}
+        </div>
 
-          {hasRealAttachments ? (
-            <AttachmentList
-              attachments={message.attachments}
-              downloadingAttachmentIds={downloadingAttachmentIds}
-              t={t}
-              onDownloadAttachment={onDownloadAttachment}
-            />
-          ) : null}
-        </article>
-      </div>
+        {hasRealAttachments ? (
+          <AttachmentList
+            attachments={message.attachments}
+            downloadingAttachmentIds={downloadingAttachmentIds}
+            t={t}
+            onDownloadAttachment={onDownloadAttachment}
+          />
+        ) : null}
+      </article>
     </div>
   )
 }
@@ -436,7 +434,7 @@ function AttachmentList({
   onDownloadAttachment?: (attachment: Attachment) => void
 }): React.JSX.Element {
   return (
-    <section className="mt-5 border-t pt-4">
+    <section className="shrink-0 border-t bg-background px-5 py-4">
       <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-muted-foreground">
         <Paperclip className="size-3.5 shrink-0" aria-hidden="true" />
         {t('mail.reader.attachments')}

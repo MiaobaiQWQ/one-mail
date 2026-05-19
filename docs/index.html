@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="OneMail 是一个本地优先的多账号桌面邮件客户端，支持 macOS、Windows 和 Linux。" />
-  <meta name="theme-color" content="#fbfbfd" />
+  <meta name="theme-color" content="#ffffff" />
   <meta property="og:title" content="OneMail - 本地优先的桌面邮件客户端" />
   <meta property="og:description" content="一个安静、可备份、重视隐私的桌面邮件工作台。" />
   <meta property="og:type" content="website" />
@@ -17,86 +17,69 @@
 </head>
 
 <body>
-  <header class="site-header">
-    <a class="brand" href="#top" aria-label="OneMail">
-      <img src="https://img.huzhihui.com/2026/05/19/onemail%20(2).webp" alt="OneMail" width="1080" height="1080"
+  <header>
+    <a href="#top" aria-label="OneMail">
+      <img src="https://img.huzhihui.com/2026/05/19/onemail%20(2).webp" alt="" width="1080" height="1080"
         decoding="async" />
+      <span>OneMail</span>
     </a>
-    <nav class="site-nav" aria-label="Language">
-      <button class="lang-toggle" type="button" data-lang-toggle>EN</button>
-    </nav>
+    <button type="button" data-lang-toggle>EN</button>
   </header>
 
   <main id="top">
-    <section class="hero" aria-labelledby="hero-title">
-      <img class="app-logo" src="https://img.huzhihui.com/2026/05/19/onemail%20(2).webp" alt="OneMail" width="1080"
-        decoding="async" fetchpriority="high" />
-      <p class="eyebrow" data-i18n="hero.eyebrow">OneMail</p>
-      <h1 id="hero-title" data-i18n="hero.title">邮件数据就该留在你的电脑里。</h1>
-      <p class="hero-copy" data-i18n="hero.copy">
+    <section aria-labelledby="hero-title">
+      <!-- <img
+          class="logo"
+          src="https://img.huzhihui.com/2026/05/19/onemail%20(2).webp"
+          alt="OneMail"
+          decoding="async"
+          fetchpriority="high"
+        /> -->
+      <!-- <p data-i18n="hero.eyebrow">OneMail</p> -->
+      <h1 id="hero-title" data-i18n="hero.title">邮件，就该留在你的电脑里。</h1>
+      <p data-i18n="hero.copy">
         本地优先的多账号桌面邮件客户端。统一收件箱、安全预览、附件下载和 SQLite 备份。
       </p>
-      <div class="hero-actions">
-        <a class="button primary" id="primary-download" href="https://github.com/zhihui-hu/one-mail/releases/latest"
-          target="_blank" rel="noreferrer" data-i18n="hero.download">
-          下载最新版
-        </a>
-        <a class="button link-button" href="#download" data-i18n="hero.allDownloads">
-          查看所有版本
-        </a>
-      </div>
-      <p class="release-note" id="release-note" aria-live="polite" data-i18n="release.loading">
+      <p>
+        <a id="primary-download" class="primary" href="https://github.com/zhihui-hu/one-mail/releases/latest"
+          target="_blank" rel="noreferrer" data-i18n="hero.download">下载最新版</a>
+        <a href="#download" data-i18n="hero.allDownloads">查看所有版本</a>
+      </p>
+      <p id="release-note" aria-live="polite" data-i18n="release.loading">
         正在查询 GitHub 最新版本...
       </p>
     </section>
 
-    <section class="screenshots" aria-label="OneMail screenshots">
-      <div class="shot-frame">
-        <img src="https://img.huzhihui.com/2026/05/15/OnaMail-03.webp" alt="OneMail desktop mail interface" width="1600"
-          height="1000" loading="lazy" decoding="async" />
-      </div>
-      <div class="shot-frame">
-        <img src="https://img.huzhihui.com/2026/05/15/OnaMail-02.webp" alt="OneMail message list" width="1600"
-          height="1000" loading="lazy" decoding="async" />
-      </div>
-      <div class="shot-frame">
-        <img src="https://img.huzhihui.com/2026/05/15/OnaMail-01.webp" alt="OneMail account settings" width="1600"
-          height="1000" loading="lazy" decoding="async" />
-      </div>
-    </section>
-
-    <section class="download-section" id="download" aria-labelledby="download-title">
+    <section id="download" aria-labelledby="download-title">
       <h2 id="download-title" data-i18n="download.title">选择你的系统。</h2>
-      <div class="download-list" aria-live="polite">
-        <div class="download-row" data-platform="macos">
-          <strong>macOS</strong>
-          <span class="asset-links" data-assets="macos">
-            <a href="https://github.com/zhihui-hu/one-mail/releases/latest" target="_blank" rel="noreferrer">
-              GitHub Release
-            </a>
-          </span>
-        </div>
-        <div class="download-row" data-platform="windows">
-          <strong>Windows</strong>
-          <span class="asset-links" data-assets="windows">
-            <a href="https://github.com/zhihui-hu/one-mail/releases/latest" target="_blank" rel="noreferrer">
-              GitHub Release
-            </a>
-          </span>
-        </div>
-        <div class="download-row" data-platform="linux">
-          <strong>Linux</strong>
-          <span class="asset-links" data-assets="linux">
-            <a href="https://github.com/zhihui-hu/one-mail/releases/latest" target="_blank" rel="noreferrer">
-              GitHub Release
-            </a>
-          </span>
-        </div>
+      <div data-platform="macos">
+        <strong>macOS</strong>
+        <span data-assets="macos">
+          <a href="https://github.com/zhihui-hu/one-mail/releases/latest" target="_blank" rel="noreferrer">
+            GitHub Release
+          </a>
+        </span>
+      </div>
+      <div data-platform="windows">
+        <strong>Windows</strong>
+        <span data-assets="windows">
+          <a href="https://github.com/zhihui-hu/one-mail/releases/latest" target="_blank" rel="noreferrer">
+            GitHub Release
+          </a>
+        </span>
+      </div>
+      <div data-platform="linux">
+        <strong>Linux</strong>
+        <span data-assets="linux">
+          <a href="https://github.com/zhihui-hu/one-mail/releases/latest" target="_blank" rel="noreferrer">
+            GitHub Release
+          </a>
+        </span>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer">
+  <footer>
     <span>OneMail</span>
     <a href="https://github.com/zhihui-hu/one-mail" target="_blank" rel="noreferrer">GitHub</a>
     <span>AGPL-3.0-only</span>
@@ -260,7 +243,7 @@
       platforms.forEach((platform) => {
         const row = document.querySelector(`[data-platform="${platform}"]`)
         const container = document.querySelector(`[data-assets="${platform}"]`)
-        row.classList.toggle('is-recommended', platform === detected)
+        row.toggleAttribute('data-recommended', platform === detected)
         if (!groups[platform].length) {
           container.innerHTML = `<a href="${GITHUB}/releases/latest" target="_blank" rel="noreferrer">${escapeHtml(t('download.openRelease'))}</a>`
           return
