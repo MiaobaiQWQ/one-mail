@@ -6,6 +6,8 @@ import { isBoringSslBadDecryptError } from '../runtime-errors'
 import type { AppUpdateCheckResult, AppUpdateStatus } from '../../shared/types'
 
 const UPDATE_CHECK_INTERVAL_MS = 1000 * 60 * 60 * 6
+const GITHUB_LATEST_RELEASE_API_URL =
+  'https://api.github.com/repos/zhihui-hu/one-mail/releases/latest'
 const PACKAGED_APP_UPDATE_UNSUPPORTED_MESSAGE =
   '当前运行环境暂不支持自动检查更新，请使用已打包的正式版本。'
 const MAC_CODE_SIGN_UPDATE_UNSUPPORTED_MESSAGE =
@@ -15,6 +17,13 @@ let updateCheckTimer: NodeJS.Timeout | undefined
 let autoUpdaterErrorHandlerInstalled = false
 let macAutoUpdateSigningSupported: boolean | undefined
 let lastUpdateStatus: AppUpdateStatus | null = null
+let githubReleaseCheckPromise: Promise<void> | undefined
+
+type GitHubLatestRelease = {
+  tag_name?: string
+  name?: string
+  html_url?: string
+}
 
 function getAutoUpdater(): AppUpdater {
   const { autoUpdater } = electronUpdater
@@ -53,6 +62,30 @@ export function stopAutoUpdateChecks(): void {
 
   clearInterval(updateCheckTimer)
   updateCheckTimer = undefined
+}
+
+export function checkGitHubReleaseForUpdates(): void {
+  if (githubReleaseCheckPromise) return
+
+  githubReleaseCheckPromise = fetchLatestGitHubRelease()
+    .then((release) => {
+      const latestVersion =
+        extractVersion(release.tag_name) ?? extractVersion(release.name) ?? undefined
+      if (!latestVersion || compareVersions(latestVersion, app.getVersion()) <= 0) return
+
+      updateStatus(getVisibleUpdateState(), {
+        latestVersion,
+        releaseUrl: release.html_url,
+        message: `发现新版本 v${latestVersion}。`,
+        progress: lastUpdateStatus?.progress
+      })
+    })
+    .catch((error) => {
+      console.warn('Failed to check GitHub releases for updates', error)
+    })
+    .finally(() => {
+      githubReleaseCheckPromise = undefined
+    })
 }
 
 export async function checkForAppUpdates(): Promise<AppUpdateCheckResult> {
@@ -257,10 +290,65 @@ function createUpdateStatus(
     state,
     currentVersion: app.getVersion(),
     latestVersion: input.latestVersion ?? lastUpdateStatus?.latestVersion,
+    releaseUrl: input.releaseUrl ?? lastUpdateStatus?.releaseUrl,
     message: input.message ?? lastUpdateStatus?.message ?? '',
     progress: input.progress,
     updatedAt: new Date().toISOString()
   }
+}
+
+async function fetchLatestGitHubRelease(): Promise<GitHubLatestRelease> {
+  const response = await fetch(GITHUB_LATEST_RELEASE_API_URL, {
+    headers: {
+      accept: 'application/vnd.github+json',
+      'user-agent': `OneMail/${app.getVersion()}`
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error(`GitHub Release 检查失败：HTTP ${response.status}`)
+  }
+
+  return (await response.json()) as GitHubLatestRelease
+}
+
+function getVisibleUpdateState(): AppUpdateStatus['state'] {
+  if (
+    lastUpdateStatus?.state === 'downloading' ||
+    lastUpdateStatus?.state === 'downloaded' ||
+    lastUpdateStatus?.state === 'installing'
+  ) {
+    return lastUpdateStatus.state
+  }
+
+  return 'available'
+}
+
+function extractVersion(value?: string): string | undefined {
+  const match = value?.trim().match(/(?:^|[^\d])v?(\d+(?:\.\d+)*)(?:[-+][0-9a-z.-]+)?(?:$|[^\d])/i)
+  return match?.[1]
+}
+
+function compareVersions(first: string, second: string): number {
+  const firstParts = parseVersionParts(first)
+  const secondParts = parseVersionParts(second)
+  const maxLength = Math.max(firstParts.length, secondParts.length)
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const firstPart = firstParts[index] ?? 0
+    const secondPart = secondParts[index] ?? 0
+    if (firstPart !== secondPart) return firstPart > secondPart ? 1 : -1
+  }
+
+  return 0
+}
+
+function parseVersionParts(value: string): number[] {
+  return value
+    .replace(/^v/i, '')
+    .split('.')
+    .map((part) => Number(part))
+    .filter((part) => Number.isSafeInteger(part))
 }
 
 function broadcastUpdateStatus(status: AppUpdateStatus): void {

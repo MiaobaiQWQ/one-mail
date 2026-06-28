@@ -427,6 +427,7 @@ export type AppUpdateCheckResult = {
   status: 'unsupported' | 'available' | 'not_available' | 'error'
   currentVersion: string
   latestVersion?: string
+  releaseUrl?: string
   message: string
 }
 
@@ -451,6 +452,7 @@ export type AppUpdateStatus = {
     | 'error'
   currentVersion: string
   latestVersion?: string
+  releaseUrl?: string
   message: string
   progress?: AppUpdateProgress
   updatedAt: string

@@ -6,7 +6,11 @@ import windowsIcon from '../../resources/icon.ico?asset'
 import { closeDatabase, initializeDatabase } from './db/connection'
 import { registerIpcHandlers } from './ipc'
 import { installRuntimeErrorGuards } from './runtime-errors'
-import { startAutoUpdateChecks, stopAutoUpdateChecks } from './services/auto-update'
+import {
+  checkGitHubReleaseForUpdates,
+  startAutoUpdateChecks,
+  stopAutoUpdateChecks
+} from './services/auto-update'
 import {
   requestForegroundMailboxSync,
   startMailboxWatchers,
@@ -74,6 +78,7 @@ function createWindow(initialRoute = '/'): BrowserWindow {
 
   nextWindow.on('show', () => {
     requestForegroundMailboxSync('show')
+    checkGitHubReleaseForUpdates()
   })
 
   nextWindow.on('restore', () => {
