@@ -91,6 +91,11 @@ type AccountMailboxStatsRow = SqliteRow & {
   unread_count: number
 }
 
+type MessageListQueryParts = {
+  where: string[]
+  params: Record<string, string | number>
+}
+
 export type MessageReadStateTarget = {
   messageId: number
   accountId: number
@@ -113,11 +118,73 @@ export type MessageDeleteTarget = {
 }
 
 export function listMessages(query?: MessageListQuery): MailMessageSummary[] {
-  const where: string[] = ['m.remote_deleted = 0', 'm.user_hidden = 0']
-  const params: Record<string, string | number> = {
+  const { where, params } = buildMessageListQueryParts(query)
+  const paginatedParams: Record<string, string | number> = {
+    ...params,
     limit: Math.min(Math.max(query?.limit ?? 50, 1), 200),
     offset: Math.max(query?.offset ?? 0, 0)
   }
+
+  const rows = getDatabase()
+    .prepare<MessageRow>(
+      `
+      SELECT
+        m.message_id,
+        m.account_id,
+        m.folder_id,
+        f.role AS folder_role,
+        f.name AS folder_name,
+        m.rfc822_message_id,
+        m.references_header,
+        m.subject,
+        m.from_name,
+        m.from_email,
+        m.received_at,
+        m.snippet,
+        m.is_read,
+        m.is_starred,
+        m.has_attachments,
+        m.body_status,
+        b.body_text,
+        b.body_html_sanitized
+      FROM onemail_mail_messages m
+      JOIN onemail_mail_folders f ON f.folder_id = m.folder_id
+      LEFT JOIN onemail_message_bodies b ON b.message_id = m.message_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY COALESCE(m.received_at, m.internal_date, m.created_at) DESC, m.message_id DESC
+      LIMIT :limit OFFSET :offset
+      `
+    )
+    .all(paginatedParams)
+
+  return rows.map(mapMessageSummaryRow)
+}
+
+export function listUnreadMessageIds(query?: MessageListQuery): number[] {
+  const { where, params } = buildMessageListQueryParts(query)
+  if (!where.includes('m.is_read = 0')) {
+    where.push('m.is_read = 0')
+  }
+
+  const rows = getDatabase()
+    .prepare<{ message_id: number }>(
+      `
+      SELECT m.message_id
+      FROM onemail_mail_messages m
+      JOIN onemail_mail_folders f ON f.folder_id = m.folder_id
+      LEFT JOIN onemail_message_bodies b ON b.message_id = m.message_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY COALESCE(m.received_at, m.internal_date, m.created_at) DESC, m.message_id DESC
+      `
+    )
+    .all(params)
+
+  return rows.map((row) => toNumber(row.message_id))
+}
+
+function buildMessageListQueryParts(query?: MessageListQuery): MessageListQueryParts {
+  const where: string[] = ['m.remote_deleted = 0', 'm.user_hidden = 0']
+  const params: Record<string, string | number> = {}
 
   if (query?.accountId !== undefined) {
     where.push('m.account_id = :accountId')
@@ -177,39 +244,7 @@ export function listMessages(query?: MessageListQuery): MailMessageSummary[] {
     params.likeKeyword = `%${escapeLikeKeyword(keyword)}%`
   }
 
-  const rows = getDatabase()
-    .prepare<MessageRow>(
-      `
-      SELECT
-        m.message_id,
-        m.account_id,
-        m.folder_id,
-        f.role AS folder_role,
-        f.name AS folder_name,
-        m.rfc822_message_id,
-        m.references_header,
-        m.subject,
-        m.from_name,
-        m.from_email,
-        m.received_at,
-        m.snippet,
-        m.is_read,
-        m.is_starred,
-        m.has_attachments,
-        m.body_status,
-        b.body_text,
-        b.body_html_sanitized
-      FROM onemail_mail_messages m
-      JOIN onemail_mail_folders f ON f.folder_id = m.folder_id
-      LEFT JOIN onemail_message_bodies b ON b.message_id = m.message_id
-      WHERE ${where.join(' AND ')}
-      ORDER BY COALESCE(m.received_at, m.internal_date, m.created_at) DESC, m.message_id DESC
-      LIMIT :limit OFFSET :offset
-      `
-    )
-    .all(params)
-
-  return rows.map(mapMessageSummaryRow)
+  return { where, params }
 }
 
 function normalizeSearchKeyword(value?: string): string | undefined {

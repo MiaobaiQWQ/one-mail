@@ -114,11 +114,14 @@ export function MailboxWorkspace(): React.JSX.Element {
     loadingMessageId,
     loadingBodyMessageId,
     downloadingAttachmentIds,
+    markingRead,
     replaceMessages,
     clearMessages,
     removeMessages,
     refreshMessages,
     selectMessage,
+    markMessagesRead,
+    markCurrentQueryRead,
     loadMoreMessages,
     loadMessageBody,
     downloadMessageAttachment
@@ -240,7 +243,7 @@ export function MailboxWorkspace(): React.JSX.Element {
     setSystemInfo(data.systemInfo)
     setSelectedAccountId(data.selectedAccountId)
     replaceMessages(data.messages, { selectFirst: true })
-  }, [replaceMessages])
+  }, [replaceMessages, setLocale])
 
   React.useEffect(() => {
     let cancelled = false
@@ -271,7 +274,7 @@ export function MailboxWorkspace(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [replaceMessages, t])
+  }, [replaceMessages, setLocale, t])
 
   React.useEffect(() => {
     return onMailboxChanged((event) => {
@@ -671,6 +674,57 @@ export function MailboxWorkspace(): React.JSX.Element {
     }
   }
 
+  async function handleMarkSelectedRead(): Promise<void> {
+    if (markingRead || selectedMessages.length === 0) return
+
+    try {
+      const result = await markMessagesRead(selectedMessages)
+      clearSelection()
+
+      if (filters.includes('unread')) {
+        await refreshMessages(selectedAccountId, filters, searchKeyword)
+      }
+
+      showMarkReadResult(result.updatedCount, result.failedCount)
+    } catch (markReadError) {
+      const messageText = getErrorMessage(markReadError, t('mailbox.readStateError'))
+      setError(messageText)
+      toast.error(messageText)
+    }
+  }
+
+  async function handleMarkAllRead(): Promise<void> {
+    if (markingRead || selectedAccount.unread === 0) return
+
+    try {
+      const result = await markCurrentQueryRead(
+        toMessageQuery(selectedAccountId, filters, undefined, searchKeyword)
+      )
+
+      if (filters.includes('unread')) {
+        await refreshMessages(selectedAccountId, filters, searchKeyword)
+      }
+
+      showMarkReadResult(result.updatedCount, result.failedCount)
+    } catch (markReadError) {
+      const messageText = getErrorMessage(markReadError, t('mailbox.readStateError'))
+      setError(messageText)
+      toast.error(messageText)
+    }
+  }
+
+  function showMarkReadResult(updatedCount: number, failedCount: number): void {
+    if (updatedCount > 0) {
+      toast.success(t('mailbox.markReadSuccess', { count: updatedCount }))
+    } else if (failedCount === 0) {
+      toast.info(t('mailbox.markReadNoop'))
+    }
+
+    if (failedCount > 0) {
+      toast.error(t('mailbox.markReadPartialFailed', { count: failedCount }))
+    }
+  }
+
   function handleSelectAccount(accountId: string): void {
     if (!accountId) return
     navigateToMailboxRoute()
@@ -792,13 +846,19 @@ export function MailboxWorkspace(): React.JSX.Element {
               onChangeFilters={handleChangeFilters}
               onChangeSearchKeyword={handleChangeSearchKeyword}
               onLoadMore={loadMoreMessages}
+              onMarkAllRead={() => {
+                void handleMarkAllRead()
+              }}
               selectedMessageIds={selectedMessageIds}
               allVisibleSelected={allVisibleSelected}
               someVisibleSelected={someVisibleSelected}
-              selectionDisabled={deleting}
+              selectionDisabled={deleting || markingRead}
               onToggleMessageSelection={toggleMessageSelection}
               onSelectAllVisible={selectAllVisible}
               onClearSelection={clearSelection}
+              onMarkSelectedRead={() => {
+                void handleMarkSelectedRead()
+              }}
               onDeleteSelected={() => requestDeleteMessages(selectedMessages)}
             />
           </ResizablePanel>

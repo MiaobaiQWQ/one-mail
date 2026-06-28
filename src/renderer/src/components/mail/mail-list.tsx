@@ -1,13 +1,18 @@
 import * as React from 'react'
-import { Paperclip, Search, Star, X } from 'lucide-react'
+import { CheckCheck, Paperclip, Search, Star, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { formatAbsoluteTime, formatRelativeTime } from '@renderer/components/mail/date-format'
 import { EllipsisTooltip } from '@renderer/components/mail/ellipsis-tooltip'
-import { getDisplayPreview, getDisplaySender, getDisplaySubject } from '@renderer/components/mail/mail-display'
+import {
+  getDisplayPreview,
+  getDisplaySender,
+  getDisplaySubject
+} from '@renderer/components/mail/mail-display'
 import { MailFilterTags } from '@renderer/components/mail/mail-filter-tags'
 import { MailListSelectionToolbar } from '@renderer/components/mail/mail-list-selection-toolbar'
 import type { Account, MailFilterTag, Message } from '@renderer/components/mail/types'
+import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import {
   InputGroup,
@@ -34,6 +39,7 @@ type MailListProps = {
   onChangeFilters: (filters: MailFilterTag[]) => void
   onChangeSearchKeyword: (keyword: string) => void
   onLoadMore: () => void
+  onMarkAllRead?: () => void
   selectedMessageIds?: Set<string>
   allVisibleSelected?: boolean
   someVisibleSelected?: boolean
@@ -41,6 +47,7 @@ type MailListProps = {
   onToggleMessageSelection?: (messageId: string, range?: boolean) => void
   onSelectAllVisible?: () => void
   onClearSelection?: () => void
+  onMarkSelectedRead?: () => void
   onDeleteSelected?: () => void
 }
 
@@ -58,6 +65,7 @@ export function MailList({
   onChangeFilters,
   onChangeSearchKeyword,
   onLoadMore,
+  onMarkAllRead,
   selectedMessageIds = new Set(),
   allVisibleSelected = false,
   someVisibleSelected = false,
@@ -65,6 +73,7 @@ export function MailList({
   onToggleMessageSelection,
   onSelectAllVisible,
   onClearSelection,
+  onMarkSelectedRead,
   onDeleteSelected
 }: MailListProps): React.JSX.Element {
   const { locale, t } = useI18n()
@@ -73,6 +82,10 @@ export function MailList({
   const readCount = Math.max(0, accountMessageCount - account.unread)
   const selectedCount = selectedMessageIds.size
   const hasSelection = selectedCount > 0
+  const unreadSelectedCount = React.useMemo(
+    () => messages.filter((message) => selectedMessageIds.has(message.id) && message.unread).length,
+    [messages, selectedMessageIds]
+  )
 
   const handleScroll = React.useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
@@ -105,6 +118,15 @@ export function MailList({
           <p className="shrink-0 text-xs text-muted-foreground">
             {t('mail.stats.readUnread', { read: readCount, unread: account.unread })}
           </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={selectionDisabled || account.unread === 0 || !onMarkAllRead}
+            onClick={onMarkAllRead}
+          >
+            <CheckCheck data-icon="inline-start" />
+            {t('mail.markAllRead')}
+          </Button>
         </div>
         <div className="app-no-drag flex flex-col gap-2 px-4 pb-2">
           <InputGroup>
@@ -132,14 +154,20 @@ export function MailList({
           </InputGroup>
           <MailFilterTags value={filters} onValueChange={onChangeFilters} />
         </div>
-        {hasSelection && onSelectAllVisible && onClearSelection && onDeleteSelected ? (
+        {hasSelection &&
+        onSelectAllVisible &&
+        onClearSelection &&
+        onMarkSelectedRead &&
+        onDeleteSelected ? (
           <MailListSelectionToolbar
             selectedCount={selectedCount}
+            unreadSelectedCount={unreadSelectedCount}
             allVisibleSelected={allVisibleSelected}
             someVisibleSelected={someVisibleSelected}
             disabled={selectionDisabled}
             onSelectAllVisible={onSelectAllVisible}
             onClearSelection={onClearSelection}
+            onMarkSelectedRead={onMarkSelectedRead}
             onDeleteSelected={onDeleteSelected}
           />
         ) : null}

@@ -7,6 +7,9 @@ import type {
   AppSettings,
   AppUpdateCheckResult,
   AppUpdateStatus,
+  BackupSyncDownloadResult,
+  BackupSyncSettings,
+  BackupSyncTransferResult,
   BackupImportResult,
   AttachmentDownloadResult,
   ComposeDraft as SharedComposeDraft,
@@ -17,6 +20,7 @@ import type {
   MailMessageBody,
   MailMessageSummary,
   MailSendInput,
+  MessageBulkReadStateResult,
   MessageReadStateUpdate,
   MessageFilterTag,
   MessageListQuery,
@@ -241,6 +245,24 @@ export async function importSqlBackup(): Promise<BackupImportResult> {
   return window.api.settings.importSql()
 }
 
+export async function loadBackupSyncSettings(): Promise<BackupSyncSettings> {
+  return window.api.settings.getBackupSync()
+}
+
+export async function saveBackupSyncSettings(
+  input: BackupSyncSettings
+): Promise<BackupSyncSettings> {
+  return window.api.settings.updateBackupSync(input)
+}
+
+export async function uploadBackupSync(): Promise<BackupSyncTransferResult> {
+  return window.api.settings.uploadBackupSync()
+}
+
+export async function downloadBackupSync(): Promise<BackupSyncDownloadResult> {
+  return window.api.settings.downloadBackupSync()
+}
+
 export async function revealDatabaseInFileManager(): Promise<boolean> {
   return window.api.system.revealDatabase()
 }
@@ -343,6 +365,19 @@ export async function setMessageReadState(
     messageId,
     isRead
   ) as Promise<MessageReadStateUpdate>
+}
+
+export async function bulkSetMessageReadState(
+  messageIds: number[],
+  isRead: boolean
+): Promise<MessageBulkReadStateResult> {
+  return window.api.messages.bulkSetReadState({ messageIds, isRead })
+}
+
+export async function markAllMessagesRead(
+  query: MessageListQuery
+): Promise<MessageBulkReadStateResult> {
+  return window.api.messages.markAllRead({ query })
 }
 
 export async function downloadAttachment(attachmentId: number): Promise<AttachmentDownloadResult> {

@@ -17,24 +17,39 @@ type BackupFileInfo = {
   exportedAt: number
 }
 
+export type DatabaseSqlBackup = BackupFileInfo & {
+  fileName: string
+  sql: string
+}
+
 const DATABASE_KEY_PATTERN = /^k(\d{10})([0-9a-f]{16})$/
 const BACKUP_FILE_PATTERN = /^(k\d{10}[0-9a-f]{16})_(\d{10})\.sql$/
 const MAX_BACKUP_CLOCK_SKEW_SECONDS = 5 * 60
 
 export async function exportDatabaseSqlBackup(): Promise<string | null> {
-  const exportedAt = getUnixTimestamp()
-  const sql = dumpDatabaseSql(exportedAt)
-  const fileName = `${getDatabaseKey()}_${exportedAt}.sql`
+  const backup = createDatabaseSqlBackup()
   const saveResult = await dialog.showSaveDialog({
     title: '导出 SQL 备份',
-    defaultPath: join(app.getPath('documents'), fileName),
+    defaultPath: join(app.getPath('documents'), backup.fileName),
     filters: [{ name: 'OneMail SQL Backup', extensions: ['sql'] }]
   })
 
   if (saveResult.canceled || !saveResult.filePath) return null
 
-  writeFileSync(saveResult.filePath, sql, 'utf8')
+  writeFileSync(saveResult.filePath, backup.sql, 'utf8')
   return saveResult.filePath
+}
+
+export function createDatabaseSqlBackup(): DatabaseSqlBackup {
+  const exportedAt = getUnixTimestamp()
+  const key = getDatabaseKey()
+
+  return {
+    key,
+    exportedAt,
+    fileName: `${key}_${exportedAt}.sql`,
+    sql: dumpDatabaseSql(exportedAt)
+  }
 }
 
 export async function importDatabaseSqlBackup(): Promise<BackupImportResult> {
@@ -49,8 +64,8 @@ export async function importDatabaseSqlBackup(): Promise<BackupImportResult> {
   }
 
   const filePath = openResult.filePaths[0]
-  const fileInfo = parseBackupFileName(filePath)
   const sql = readBackupSql(filePath)
+  const fileInfo = resolveBackupFileInfo(sql, filePath)
 
   validateSqlBackup(sql, fileInfo)
   restoreDatabaseSql(sql, fileInfo.key)
@@ -58,6 +73,23 @@ export async function importDatabaseSqlBackup(): Promise<BackupImportResult> {
   return {
     imported: true,
     filePath,
+    importedAt: new Date().toISOString(),
+    exportedAt: fileInfo.exportedAt
+  }
+}
+
+export function importDatabaseSqlBackupContent(
+  sql: string,
+  sourceName?: string
+): BackupImportResult {
+  const fileInfo = resolveBackupFileInfo(sql, sourceName)
+
+  validateSqlBackup(sql, fileInfo)
+  restoreDatabaseSql(sql, fileInfo.key)
+
+  return {
+    imported: true,
+    filePath: sourceName,
     importedAt: new Date().toISOString(),
     exportedAt: fileInfo.exportedAt
   }
@@ -213,10 +245,11 @@ function dropExistingObjects(): void {
   }
 }
 
-function parseBackupFileName(filePath: string): BackupFileInfo {
+function parseBackupFileName(filePath: string, throwOnError = true): BackupFileInfo | undefined {
   const fileName = basename(filePath)
   const match = BACKUP_FILE_PATTERN.exec(fileName)
   if (!match) {
+    if (!throwOnError) return undefined
     throw new Error('备份文件名无效，应为 密钥_linux时间戳.sql。')
   }
 
@@ -226,6 +259,22 @@ function parseBackupFileName(filePath: string): BackupFileInfo {
   validateKeyAndTimestamp(key, exportedAt)
 
   return { key, exportedAt }
+}
+
+function resolveBackupFileInfo(sql: string, sourceName?: string): BackupFileInfo {
+  const fileInfo = sourceName ? parseBackupFileName(sourceName, false) : undefined
+  const header = parseSqlBackupHeader(sql)
+
+  if (!header) {
+    if (fileInfo) return fileInfo
+    throw new Error('备份 SQL 缺少密钥或导出时间。')
+  }
+
+  if (fileInfo && (header.key !== fileInfo.key || header.exportedAt !== fileInfo.exportedAt)) {
+    throw new Error('备份 SQL 头部信息与文件名不一致。')
+  }
+
+  return header
 }
 
 function readBackupSql(filePath: string): string {

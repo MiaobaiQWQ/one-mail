@@ -3,13 +3,16 @@ import * as React from 'react'
 import type { Account, MailFilterTag, Message } from '@renderer/components/mail/types'
 import {
   downloadAttachment,
+  bulkSetMessageReadState,
   loadMessageBody,
   loadMessageDetail as loadMessageDetailApi,
   loadMessages,
+  markAllMessagesRead,
   MESSAGE_LIST_PAGE_SIZE,
   setMessageReadState,
   toMessageQuery
 } from '@renderer/lib/api'
+import type { MessageBulkReadStateResult, MessageListQuery } from '../../../../shared/types'
 import { useI18n } from '@renderer/lib/i18n'
 import { isVerificationMailCandidate } from '../../../../shared/verification-code'
 import {
@@ -55,6 +58,7 @@ export function useMailboxMessages({
   loadingMessageId: string | null
   loadingBodyMessageId: string | null
   downloadingAttachmentIds: Set<number>
+  markingRead: boolean
   replaceMessages: (nextMessages: Message[], options?: ReplaceMessagesOptions) => void
   clearMessages: () => void
   removeMessages: (messageIds: string[]) => void
@@ -65,6 +69,8 @@ export function useMailboxMessages({
     options?: ReplaceMessagesOptions
   ) => Promise<void>
   selectMessage: (messageId: string) => void
+  markMessagesRead: (targetMessages: Message[]) => Promise<MessageBulkReadStateResult>
+  markCurrentQueryRead: (query: MessageListQuery) => Promise<MessageBulkReadStateResult>
   loadMoreMessages: () => void
   loadMessageBody: (message: Message) => void
   downloadMessageAttachment: (message: Message, attachmentId: number) => void
@@ -81,6 +87,7 @@ export function useMailboxMessages({
   const [downloadingAttachmentIds, setDownloadingAttachmentIds] = React.useState<Set<number>>(
     () => new Set()
   )
+  const [markingRead, setMarkingRead] = React.useState(false)
   const loadingMoreMessagesRef = React.useRef(false)
   const loadingMessageIdsRef = React.useRef<Set<string>>(new Set())
   const loadingBodyMessageIdsRef = React.useRef<Set<string>>(new Set())
@@ -334,6 +341,109 @@ export function useMailboxMessages({
     [setAccounts, setError, t]
   )
 
+  const applyReadStateUpdates = React.useCallback(
+    (result: MessageBulkReadStateResult): void => {
+      if (result.updates.length === 0) return
+
+      const succeededIds = new Set(result.updates.map((update) => String(update.messageId)))
+      const accountUnreadDelta = new Map<number, number>()
+
+      for (const update of result.updates) {
+        const visibleMessage = messagesById.get(String(update.messageId))
+        const shouldCountChange = visibleMessage ? visibleMessage.unread !== !result.isRead : true
+
+        if (!shouldCountChange) continue
+
+        accountUnreadDelta.set(
+          update.accountId,
+          (accountUnreadDelta.get(update.accountId) ?? 0) + (result.isRead ? -1 : 1)
+        )
+      }
+
+      setMessages((current) =>
+        current.map((message) =>
+          succeededIds.has(message.id) ? { ...message, unread: !result.isRead } : message
+        )
+      )
+
+      if (accountUnreadDelta.size === 0) return
+
+      setAccounts((current) =>
+        current.map((account) => {
+          if (account.id !== 'all' && !accountUnreadDelta.has(account.accountId ?? -1)) {
+            return account
+          }
+
+          const delta =
+            account.id === 'all'
+              ? Array.from(accountUnreadDelta.values()).reduce((sum, value) => sum + value, 0)
+              : (accountUnreadDelta.get(account.accountId ?? -1) ?? 0)
+
+          return {
+            ...account,
+            unread: Math.max(0, account.unread + delta)
+          }
+        })
+      )
+    },
+    [messagesById, setAccounts]
+  )
+
+  const markMessagesRead = React.useCallback(
+    async (targetMessages: Message[]): Promise<MessageBulkReadStateResult> => {
+      const unreadMessages = targetMessages.filter((message) => message.unread)
+      const messageIds = unreadMessages.map((message) => message.messageId)
+
+      setMarkingRead(true)
+      setError(null)
+
+      try {
+        const result =
+          messageIds.length === 0
+            ? {
+                isRead: true,
+                updates: [],
+                succeededMessageIds: [],
+                failedItems: [],
+                updatedCount: 0,
+                failedCount: 0
+              }
+            : await bulkSetMessageReadState(messageIds, true)
+        applyReadStateUpdates(result)
+
+        if (result.failedCount > 0) {
+          setError(result.failedItems[0]?.error ?? t('mailbox.readStateError'))
+        }
+
+        return result
+      } finally {
+        setMarkingRead(false)
+      }
+    },
+    [applyReadStateUpdates, setError, t]
+  )
+
+  const markCurrentQueryRead = React.useCallback(
+    async (query: MessageListQuery): Promise<MessageBulkReadStateResult> => {
+      setMarkingRead(true)
+      setError(null)
+
+      try {
+        const result = await markAllMessagesRead(query)
+        applyReadStateUpdates(result)
+
+        if (result.failedCount > 0) {
+          setError(result.failedItems[0]?.error ?? t('mailbox.readStateError'))
+        }
+
+        return result
+      } finally {
+        setMarkingRead(false)
+      }
+    },
+    [applyReadStateUpdates, setError, t]
+  )
+
   const reloadMessageDetail = React.useCallback((message: Message): Promise<void> => {
     return loadMessageDetailById(String(message.messageId)).then((detail) => {
       if (!detail) return
@@ -365,7 +475,7 @@ export function useMailboxMessages({
           })
         })
     },
-    [downloadingAttachmentIds, reloadMessageDetail, setError]
+    [downloadingAttachmentIds, reloadMessageDetail, setError, t]
   )
 
   const selectMessage = React.useCallback((messageId: string): void => {
@@ -407,11 +517,14 @@ export function useMailboxMessages({
     loadingMessageId,
     loadingBodyMessageId,
     downloadingAttachmentIds,
+    markingRead,
     replaceMessages,
     clearMessages,
     removeMessages,
     refreshMessages,
     selectMessage,
+    markMessagesRead,
+    markCurrentQueryRead,
     loadMoreMessages,
     loadMessageBody: loadMessageBodyForReader,
     downloadMessageAttachment

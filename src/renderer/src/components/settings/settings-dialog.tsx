@@ -12,6 +12,7 @@ import {
   LoaderCircle,
   Power,
   RefreshCcw,
+  Save,
   ShieldCheck,
   Upload
 } from 'lucide-react'
@@ -21,9 +22,13 @@ import { z } from 'zod'
 
 import {
   exportSqlBackup,
+  downloadBackupSync,
   importSqlBackup,
+  loadBackupSyncSettings,
   openExternalUrl,
-  revealPathInFileManager
+  revealPathInFileManager,
+  saveBackupSyncSettings,
+  uploadBackupSync
 } from '@renderer/lib/api'
 import { ResponsiveDialog } from '@renderer/components/responsive-dialog'
 import { Button } from '@renderer/components/ui/button'
@@ -49,6 +54,7 @@ import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/ale
 import type {
   AppSettings,
   AppUpdateStatus,
+  BackupSyncSettings,
   SettingsUpdateInput,
   SystemInfo
 } from '../../../../shared/types'
@@ -68,6 +74,7 @@ type SettingsDialogProps = {
 }
 
 type SettingsSection = 'general' | 'backup' | 'about'
+type BackupPending = 'export' | 'import' | 'saveRemote' | 'uploadRemote' | 'downloadRemote' | null
 type BackupMessage = {
   label: string
   path?: string
@@ -118,10 +125,13 @@ export function SettingsDialog({
   const settingsSchema = React.useMemo(() => createSettingsSchema(t), [t])
   const [section, setSection] = React.useState<SettingsSection>('general')
   const [pending, setPending] = React.useState(false)
-  const [backupPending, setBackupPending] = React.useState<'export' | 'import' | null>(null)
+  const [backupPending, setBackupPending] = React.useState<BackupPending>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [backupMessage, setBackupMessage] = React.useState<BackupMessage | null>(null)
   const [backupError, setBackupError] = React.useState<string | null>(null)
+  const [backupSyncSettings, setBackupSyncSettings] = React.useState<BackupSyncSettings | null>(
+    null
+  )
   const lastSavedValuesRef = React.useRef<SettingsFormValues>(toFormValues(settings))
   const autoSaveTimerRef = React.useRef<number | null>(null)
   const queuedValuesRef = React.useRef<SettingsFormValues | null>(null)
@@ -204,6 +214,27 @@ export function SettingsDialog({
   }, [form, initialSection, open, settings])
 
   React.useEffect(() => {
+    if (!open || section !== 'backup') return
+
+    let cancelled = false
+    void loadBackupSyncSettings()
+      .then((nextSettings) => {
+        if (!cancelled) setBackupSyncSettings(nextSettings)
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          setBackupError(
+            loadError instanceof Error ? loadError.message : t('settings.backup.error')
+          )
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, section, t])
+
+  React.useEffect(() => {
     if (!open) return
 
     if (autoSaveTimerRef.current) {
@@ -275,8 +306,40 @@ export function SettingsDialog({
     })
   }
 
+  async function handleSaveBackupSync(input: BackupSyncSettings): Promise<void> {
+    await runBackupAction('saveRemote', async () => {
+      const nextSettings = await saveBackupSyncSettings(input)
+      setBackupSyncSettings(nextSettings)
+      setBackupMessage({ label: t('settings.backup.remoteSaved') })
+    })
+  }
+
+  async function handleUploadBackupSync(): Promise<void> {
+    await runBackupAction('uploadRemote', async () => {
+      const result = await uploadBackupSync()
+      setBackupMessage({
+        label: t('settings.backup.remoteUploaded'),
+        path: result.remotePath
+      })
+    })
+  }
+
+  async function handleDownloadBackupSync(): Promise<void> {
+    await runBackupAction('downloadRemote', async () => {
+      const result = await downloadBackupSync()
+      setBackupMessage(
+        result.imported
+          ? { label: t('settings.backup.remoteDownloaded'), path: result.remotePath }
+          : { label: t('settings.backup.importCanceled') }
+      )
+      if (result.imported) {
+        await onImported?.()
+      }
+    })
+  }
+
   async function runBackupAction(
-    action: 'export' | 'import',
+    action: Exclude<BackupPending, null>,
     task: () => Promise<void>
   ): Promise<void> {
     setBackupPending(action)
@@ -335,11 +398,16 @@ export function SettingsDialog({
             <GeneralSettingsForm form={form} error={error} />
           ) : section === 'backup' ? (
             <BackupSettings
+              key={getBackupSyncSettingsKey(backupSyncSettings)}
               pending={backupPending}
               message={backupMessage}
               error={backupError}
+              syncSettings={backupSyncSettings}
               onExport={handleExport}
               onImport={handleImport}
+              onSaveSync={handleSaveBackupSync}
+              onUploadSync={handleUploadBackupSync}
+              onDownloadSync={handleDownloadBackupSync}
             />
           ) : (
             <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
@@ -462,17 +530,29 @@ function BackupSettings({
   pending,
   message,
   error,
+  syncSettings,
   onExport,
-  onImport
+  onImport,
+  onSaveSync,
+  onUploadSync,
+  onDownloadSync
 }: {
-  pending: 'export' | 'import' | null
+  pending: BackupPending
   message: BackupMessage | null
   error: string | null
+  syncSettings: BackupSyncSettings | null
   onExport: () => Promise<void>
   onImport: () => Promise<void>
+  onSaveSync: (input: BackupSyncSettings) => Promise<void>
+  onUploadSync: () => Promise<void>
+  onDownloadSync: () => Promise<void>
 }): React.JSX.Element {
   const { t } = useI18n()
+  const [draft, setDraft] = React.useState<BackupSyncSettings>(
+    () => syncSettings ?? { provider: 'none' }
+  )
   const disabled = Boolean(pending)
+  const remoteConfigured = Boolean(syncSettings && syncSettings.provider !== 'none')
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[540px] flex-col gap-3 p-3 sm:p-4">
@@ -506,11 +586,235 @@ function BackupSettings({
           />
         </div>
 
+        <div className="flex flex-col gap-2 rounded-md border bg-card p-3">
+          <div className="flex flex-col gap-1">
+            <FieldLabel className="text-xs">{t('settings.backup.remoteTitle')}</FieldLabel>
+            <FieldDescription className="text-xs leading-snug">
+              {t('settings.backup.remoteDescription')}
+            </FieldDescription>
+          </div>
+
+          <Field>
+            <FieldLabel className="text-xs" htmlFor="backup-sync-provider">
+              {t('settings.backup.remoteProvider')}
+            </FieldLabel>
+            <Select
+              value={draft.provider}
+              onValueChange={(value) => setDraft(createBackupSyncDraft(value, syncSettings))}
+            >
+              <SelectTrigger id="backup-sync-provider" size="sm">
+                <SelectValue placeholder={t('settings.backup.remoteProvider')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="none">{t('settings.backup.remoteProviderNone')}</SelectItem>
+                  <SelectItem value="webdav">WebDAV</SelectItem>
+                  <SelectItem value="s3">S3</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {draft.provider === 'webdav' ? (
+            <div className="grid gap-2">
+              <BackupTextField
+                id="backup-webdav-url"
+                label={t('settings.backup.webdavUrl')}
+                value={draft.remoteUrl}
+                placeholder="https://dav.example.com/onemail-backup.sql"
+                disabled={disabled}
+                onChange={(value) => setDraft({ ...draft, remoteUrl: value })}
+              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <BackupTextField
+                  id="backup-webdav-username"
+                  label={t('settings.backup.username')}
+                  value={draft.username ?? ''}
+                  disabled={disabled}
+                  onChange={(value) => setDraft({ ...draft, username: value })}
+                />
+                <BackupTextField
+                  id="backup-webdav-password"
+                  label={t('settings.backup.password')}
+                  value={draft.password ?? ''}
+                  type="password"
+                  placeholder={
+                    draft.passwordConfigured ? t('settings.backup.secretKeepPlaceholder') : ''
+                  }
+                  disabled={disabled}
+                  onChange={(value) => setDraft({ ...draft, password: value })}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {draft.provider === 's3' ? (
+            <div className="grid gap-2">
+              <BackupTextField
+                id="backup-s3-endpoint"
+                label={t('settings.backup.s3Endpoint')}
+                value={draft.endpoint ?? ''}
+                placeholder="https://account-id.r2.cloudflarestorage.com"
+                disabled={disabled}
+                onChange={(value) => setDraft({ ...draft, endpoint: value })}
+              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <BackupTextField
+                  id="backup-s3-region"
+                  label={t('settings.backup.s3Region')}
+                  value={draft.region}
+                  placeholder="us-east-1"
+                  disabled={disabled}
+                  onChange={(value) => setDraft({ ...draft, region: value })}
+                />
+                <BackupTextField
+                  id="backup-s3-bucket"
+                  label={t('settings.backup.s3Bucket')}
+                  value={draft.bucket}
+                  disabled={disabled}
+                  onChange={(value) => setDraft({ ...draft, bucket: value })}
+                />
+              </div>
+              <BackupTextField
+                id="backup-s3-key"
+                label={t('settings.backup.s3Key')}
+                value={draft.key}
+                placeholder="onemail/onemail-backup.sql"
+                disabled={disabled}
+                onChange={(value) => setDraft({ ...draft, key: value })}
+              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <BackupTextField
+                  id="backup-s3-access-key"
+                  label={t('settings.backup.s3AccessKey')}
+                  value={draft.accessKeyId}
+                  disabled={disabled}
+                  onChange={(value) => setDraft({ ...draft, accessKeyId: value })}
+                />
+                <BackupTextField
+                  id="backup-s3-secret-key"
+                  label={t('settings.backup.s3SecretKey')}
+                  value={draft.secretAccessKey ?? ''}
+                  type="password"
+                  placeholder={
+                    draft.secretAccessKeyConfigured
+                      ? t('settings.backup.secretKeepPlaceholder')
+                      : ''
+                  }
+                  disabled={disabled}
+                  onChange={(value) => setDraft({ ...draft, secretAccessKey: value })}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <BackupActionButton
+              icon={Save}
+              title={t('settings.backup.remoteSave')}
+              loadingTitle={t('settings.backup.remoteSaving')}
+              description={t('settings.backup.remoteSaveDescription')}
+              loading={pending === 'saveRemote'}
+              disabled={disabled}
+              onClick={() => onSaveSync(draft)}
+            />
+            <BackupActionButton
+              icon={Upload}
+              title={t('settings.backup.remoteUpload')}
+              loadingTitle={t('settings.backup.remoteUploading')}
+              description={t('settings.backup.remoteUploadDescription')}
+              loading={pending === 'uploadRemote'}
+              disabled={disabled || !remoteConfigured}
+              onClick={onUploadSync}
+            />
+            <BackupActionButton
+              icon={Download}
+              title={t('settings.backup.remoteDownload')}
+              loadingTitle={t('settings.backup.remoteDownloading')}
+              description={t('settings.backup.remoteDownloadDescription')}
+              loading={pending === 'downloadRemote'}
+              disabled={disabled || !remoteConfigured}
+              onClick={onDownloadSync}
+            />
+          </div>
+        </div>
+
         {message ? <BackupMessageView message={message} /> : null}
         {error ? <FieldError>{error}</FieldError> : null}
       </FieldGroup>
     </div>
   )
+}
+
+function getBackupSyncSettingsKey(settings: BackupSyncSettings | null): string {
+  if (!settings) return 'backup-sync-loading'
+  if (settings.provider === 'webdav') {
+    return `webdav:${settings.remoteUrl}:${settings.username ?? ''}:${settings.passwordConfigured ? '1' : '0'}`
+  }
+  if (settings.provider === 's3') {
+    return `s3:${settings.endpoint ?? ''}:${settings.region}:${settings.bucket}:${settings.key}:${settings.accessKeyId}:${settings.secretAccessKeyConfigured ? '1' : '0'}`
+  }
+  return 'none'
+}
+
+function BackupTextField({
+  id,
+  label,
+  value,
+  placeholder,
+  type = 'text',
+  disabled,
+  onChange
+}: {
+  id: string
+  label: string
+  value: string
+  placeholder?: string
+  type?: React.HTMLInputTypeAttribute
+  disabled?: boolean
+  onChange: (value: string) => void
+}): React.JSX.Element {
+  return (
+    <Field>
+      <FieldLabel className="text-xs" htmlFor={id}>
+        {label}
+      </FieldLabel>
+      <Input
+        id={id}
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </Field>
+  )
+}
+
+function createBackupSyncDraft(
+  provider: string,
+  current: BackupSyncSettings | null
+): BackupSyncSettings {
+  if (provider === 'webdav') {
+    return current?.provider === 'webdav'
+      ? current
+      : { provider: 'webdav', remoteUrl: '', username: '' }
+  }
+
+  if (provider === 's3') {
+    return current?.provider === 's3'
+      ? current
+      : {
+          provider: 's3',
+          endpoint: '',
+          region: 'us-east-1',
+          bucket: '',
+          key: 'onemail-backup.sql',
+          accessKeyId: ''
+        }
+  }
+
+  return { provider: 'none' }
 }
 
 function AboutSettings({
@@ -571,6 +875,9 @@ function AboutSettings({
 }
 
 function BackupMessageView({ message }: { message: BackupMessage }): React.JSX.Element {
+  const isRemotePath =
+    message.path?.startsWith('http://') === true || message.path?.startsWith('https://') === true
+
   if (!message.path) {
     return (
       <Alert className="py-2 text-xs">
@@ -590,7 +897,11 @@ function BackupMessageView({ message }: { message: BackupMessage }): React.JSX.E
         className="h-auto justify-start break-all px-0 py-0 text-left whitespace-normal"
         variant="link"
         size="sm"
-        onClick={() => void revealPathInFileManager(message.path!)}
+        onClick={() =>
+          void (isRemotePath
+            ? openExternalUrl(message.path!)
+            : revealPathInFileManager(message.path!))
+        }
       >
         <FolderOpen data-icon="inline-start" />
         {message.path}

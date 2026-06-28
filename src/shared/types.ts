@@ -293,6 +293,30 @@ export type MessageReadStateUpdate = {
   isRead: boolean
 }
 
+export type MessageBulkReadStateFailure = {
+  messageId: number
+  accountId?: number
+  error: string
+}
+
+export type MessageBulkReadStateInput = {
+  messageIds: number[]
+  isRead: boolean
+}
+
+export type MessageBulkReadStateResult = {
+  isRead: boolean
+  updates: MessageReadStateUpdate[]
+  succeededMessageIds: number[]
+  failedItems: MessageBulkReadStateFailure[]
+  updatedCount: number
+  failedCount: number
+}
+
+export type MessageMarkAllReadInput = {
+  query?: MessageListQuery
+}
+
 export type SyncStatus = {
   running: boolean
   accountIds: number[]
@@ -347,6 +371,43 @@ export type AppSettings = {
 }
 
 export type SettingsUpdateInput = Partial<AppSettings>
+
+export type BackupSyncProvider = 'none' | 'webdav' | 's3'
+
+export type BackupSyncSettings =
+  | {
+      provider: 'none'
+    }
+  | {
+      provider: 'webdav'
+      remoteUrl: string
+      username?: string
+      password?: string
+      passwordConfigured?: boolean
+    }
+  | {
+      provider: 's3'
+      endpoint?: string
+      region: string
+      bucket: string
+      key: string
+      accessKeyId: string
+      secretAccessKey?: string
+      secretAccessKeyConfigured?: boolean
+    }
+
+export type BackupSyncTransferResult = {
+  provider: Exclude<BackupSyncProvider, 'none'>
+  remotePath: string
+  fileName?: string
+  exportedAt?: number
+  transferredAt: string
+}
+
+export type BackupSyncDownloadResult = BackupImportResult & {
+  provider?: Exclude<BackupSyncProvider, 'none'>
+  remotePath?: string
+}
 
 export type BackupImportResult = {
   imported: boolean
@@ -416,6 +477,8 @@ export type OneMailApi = {
     get: (messageId: number) => Promise<MailMessageDetail | null>
     loadBody: (messageId: number) => Promise<MailMessageBodyLoadResult>
     setReadState: (messageId: number, isRead: boolean) => Promise<MessageReadStateUpdate>
+    bulkSetReadState: (input: MessageBulkReadStateInput) => Promise<MessageBulkReadStateResult>
+    markAllRead: (input?: MessageMarkAllReadInput) => Promise<MessageBulkReadStateResult>
     downloadAttachment: (attachmentId: number) => Promise<AttachmentDownloadResult>
     delete: (input: MessageDeleteInput) => Promise<MessageDeleteResult>
     bulkDelete: (input: MessageBulkDeleteInput) => Promise<MessageBulkDeleteResult>
@@ -447,6 +510,10 @@ export type OneMailApi = {
   settings: {
     get: () => Promise<AppSettings>
     update: (input: SettingsUpdateInput) => Promise<AppSettings>
+    getBackupSync: () => Promise<BackupSyncSettings>
+    updateBackupSync: (input: BackupSyncSettings) => Promise<BackupSyncSettings>
+    uploadBackupSync: () => Promise<BackupSyncTransferResult>
+    downloadBackupSync: () => Promise<BackupSyncDownloadResult>
     exportSql: () => Promise<string | null>
     importSql: () => Promise<BackupImportResult>
   }

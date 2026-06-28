@@ -1,0 +1,115 @@
+name: 问题反馈 / 功能建议
+description: 反馈 OneMail 的问题、使用疑问或功能建议。
+title: '[Issue] '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈 OneMail。请尽量填写下面的信息，尤其是版本、系统和可复现步骤。
+
+        请不要提交邮箱密码、授权码、完整邮件正文、数据库密钥或其他敏感信息。
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: 类型
+      description: 请选择最接近的一类。
+      options:
+        - Bug / 异常行为
+        - 功能建议
+        - 使用问题
+        - 文档或说明问题
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: OneMail 版本
+      description: 可在应用的关于页面或安装包文件名中查看。
+      placeholder: 例如：26.525.1605
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: 操作系统
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: 系统版本
+      placeholder: 例如：macOS 15.5 / Windows 11 24H2 / Ubuntu 24.04
+
+  - type: dropdown
+    id: mail_provider
+    attributes:
+      label: 邮箱类型
+      description: 如果和邮箱同步、登录、发信、附件有关，请选择对应邮箱。
+      options:
+        - Gmail
+        - QQ / Foxmail
+        - 网易邮箱
+        - Outlook / Hotmail
+        - 阿里邮箱 / 阿里企业邮箱
+        - iCloud
+        - 自定义 IMAP
+        - 其他
+        - 与邮箱类型无关
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题描述
+      description: 请简要说明发生了什么，或希望增加什么能力。
+      placeholder: 例如：同步某个邮箱时一直停留在同步中，无法看到新邮件。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 如果是 Bug，请写出可复现步骤。
+      placeholder: |
+        1. 打开 OneMail
+        2. 进入某个邮箱账号
+        3. 点击同步
+        4. 出现异常
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+      placeholder: 例如：同步完成后列表应该展示最新邮件。
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      placeholder: 例如：同步状态一直转圈，列表没有变化。
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 截图或日志
+      description: 可以粘贴关键错误信息或拖入截图。提交前请先移除邮箱地址、密码、授权码、邮件正文等敏感信息。
+      render: text
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已经使用最新版本验证过。
+          required: true
+        - label: 我确认没有在 issue 中包含密码、授权码、数据库密钥或完整邮件正文。
+          required: true

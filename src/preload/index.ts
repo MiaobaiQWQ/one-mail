@@ -28,6 +28,8 @@ const api = {
     loadBody: (messageId) => ipcRenderer.invoke('messages/loadBody', messageId),
     setReadState: (messageId, isRead) =>
       ipcRenderer.invoke('messages/setReadState', messageId, isRead),
+    bulkSetReadState: (input) => ipcRenderer.invoke('messages/bulkSetReadState', input),
+    markAllRead: (input) => ipcRenderer.invoke('messages/markAllRead', input),
     downloadAttachment: (attachmentId) =>
       ipcRenderer.invoke('messages/downloadAttachment', attachmentId),
     delete: (input) => ipcRenderer.invoke('messages/delete', input),
@@ -72,6 +74,10 @@ const api = {
   settings: {
     get: () => ipcRenderer.invoke('settings/get'),
     update: (input) => ipcRenderer.invoke('settings/update', input),
+    getBackupSync: () => ipcRenderer.invoke('settings/getBackupSync'),
+    updateBackupSync: (input) => ipcRenderer.invoke('settings/updateBackupSync', input),
+    uploadBackupSync: () => ipcRenderer.invoke('settings/uploadBackupSync'),
+    downloadBackupSync: () => ipcRenderer.invoke('settings/downloadBackupSync'),
     exportSql: () => ipcRenderer.invoke('settings/exportSql'),
     importSql: () => ipcRenderer.invoke('settings/importSql')
   },

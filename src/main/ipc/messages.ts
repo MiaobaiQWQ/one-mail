@@ -7,8 +7,12 @@ import {
 } from '../db/repositories/message.repository'
 import { downloadAttachment } from '../mail/attachment-downloader'
 import { loadMessageBodyFromImap } from '../mail/body-loader'
-import { syncMessageReadState } from '../mail/read-state-sync'
-import type { MessageListQuery } from './types'
+import {
+  markUnreadMessagesRead,
+  syncMessageReadState,
+  syncMessagesReadState
+} from '../mail/read-state-sync'
+import type { MessageBulkReadStateInput, MessageListQuery, MessageMarkAllReadInput } from './types'
 
 export function registerMessageIpc(): void {
   ipcMain.handle('messages/list', (_event, query?: MessageListQuery) => listMessages(query))
@@ -29,6 +33,12 @@ export function registerMessageIpc(): void {
   })
   ipcMain.handle('messages/setReadState', (_event, messageId: number, isRead: boolean) =>
     syncMessageReadState(messageId, isRead)
+  )
+  ipcMain.handle('messages/bulkSetReadState', (_event, input: MessageBulkReadStateInput) =>
+    syncMessagesReadState(input.messageIds, input.isRead)
+  )
+  ipcMain.handle('messages/markAllRead', (_event, input?: MessageMarkAllReadInput) =>
+    markUnreadMessagesRead(input?.query)
   )
   ipcMain.handle('messages/downloadAttachment', (_event, attachmentId: number) =>
     downloadAttachment(attachmentId)

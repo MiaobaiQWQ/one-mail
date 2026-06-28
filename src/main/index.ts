@@ -13,6 +13,12 @@ import {
   stopMailboxWatchers
 } from './services/mailbox-watch'
 import { setNotificationOpenWindowHandler } from './services/notification-center'
+import {
+  destroyTray,
+  initializeTray,
+  markAppQuitRequested,
+  shouldHideWindowToTray
+} from './services/tray'
 
 installRuntimeErrorGuards()
 
@@ -49,6 +55,13 @@ function createWindow(initialRoute = '/'): BrowserWindow {
   })
 
   mainWindow = nextWindow
+
+  nextWindow.on('close', (event) => {
+    if (!shouldHideWindowToTray()) return
+
+    event.preventDefault()
+    nextWindow.hide()
+  })
 
   nextWindow.on('ready-to-show', () => {
     nextWindow.show()
@@ -103,6 +116,14 @@ function createWindow(initialRoute = '/'): BrowserWindow {
   return nextWindow
 }
 
+function showMainWindow(initialRoute = '/'): BrowserWindow {
+  const window = createWindow(initialRoute)
+  if (window.isMinimized()) window.restore()
+  window.show()
+  window.focus()
+  return window
+}
+
 function getCopyLinkMenuLabel(): string {
   return app.getLocale().toLowerCase().startsWith('zh') ? '复制链接' : 'Copy link'
 }
@@ -120,7 +141,11 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   startMailboxWatchers()
   startAutoUpdateChecks()
-  setNotificationOpenWindowHandler((route) => createWindow(route))
+  initializeTray(process.platform === 'win32' ? windowsIcon : appIcon, {
+    showWindow: () => showMainWindow(),
+    syncNow: () => requestForegroundMailboxSync('show')
+  })
+  setNotificationOpenWindowHandler((route) => showMainWindow(route))
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -135,6 +160,7 @@ app.whenReady().then(() => {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    else showMainWindow()
   })
 })
 
@@ -148,6 +174,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  markAppQuitRequested()
+  destroyTray()
   stopAutoUpdateChecks()
   stopMailboxWatchers()
   closeDatabase()

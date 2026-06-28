@@ -1,6 +1,7 @@
-import { getDatabase } from '../connection'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
+import { getDatabase, getDatabaseKey } from '../connection'
 import { getOpenAtLogin, setOpenAtLogin } from '../../services/login-item'
-import type { AppSettings, SettingsUpdateInput } from '../../ipc/types'
+import type { AppSettings, BackupSyncSettings, SettingsUpdateInput } from '../../ipc/types'
 
 const defaultSettings: AppSettings = {
   syncIntervalMinutes: 15,
@@ -16,8 +17,17 @@ const settingsDefinition = {
   openAtLogin: { key: 'open_at_login', type: 'boolean' },
   externalImagesBlocked: { key: 'external_images_blocked', type: 'boolean' },
   locale: { key: 'locale', type: 'string' },
-  lastAttachmentDownloadDir: { key: 'last_attachment_download_dir', type: 'string' }
+  lastAttachmentDownloadDir: { key: 'last_attachment_download_dir', type: 'string' },
+  backupSyncSettings: { key: 'backup_sync_settings', type: 'secret_json' }
 } as const
+
+type EncryptedSettingsPayload = {
+  version: 1
+  alg: 'aes-256-gcm'
+  iv: string
+  authTag: string
+  ciphertext: string
+}
 
 type SettingRow = {
   setting_key: string
@@ -82,6 +92,26 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
   writeSetting(settingsDefinition.locale.key, next.locale, settingsDefinition.locale.type)
 
   return getSettings()
+}
+
+export function getBackupSyncSettings(): BackupSyncSettings {
+  return redactBackupSyncSettings(readBackupSyncSettings())
+}
+
+export function getBackupSyncSettingsForMain(): BackupSyncSettings {
+  return readBackupSyncSettings()
+}
+
+export function updateBackupSyncSettings(input: BackupSyncSettings): BackupSyncSettings {
+  const nextSettings = normalizeBackupSyncSettings(input, readBackupSyncSettings())
+
+  writeSetting(
+    settingsDefinition.backupSyncSettings.key,
+    encryptBackupSyncSettings(nextSettings),
+    settingsDefinition.backupSyncSettings.type
+  )
+
+  return redactBackupSyncSettings(nextSettings)
 }
 
 export function getLastAttachmentDownloadDir(): string | undefined {
@@ -165,6 +195,187 @@ function writeSetting(key: string, value: string, valueType: string): void {
       `
     )
     .run({ key, value, valueType })
+}
+
+function readBackupSyncSettings(): BackupSyncSettings {
+  const row = readSetting(settingsDefinition.backupSyncSettings.key)
+  if (!row?.setting_value) return { provider: 'none' }
+
+  try {
+    const settings = JSON.parse(decryptBackupSyncSettings(row.setting_value)) as BackupSyncSettings
+    return normalizeStoredBackupSyncSettings(settings)
+  } catch {
+    return { provider: 'none' }
+  }
+}
+
+function normalizeStoredBackupSyncSettings(settings: BackupSyncSettings): BackupSyncSettings {
+  if (settings.provider === 'webdav') {
+    return {
+      provider: 'webdav',
+      remoteUrl: settings.remoteUrl,
+      username: settings.username,
+      password: settings.password
+    }
+  }
+
+  if (settings.provider === 's3') {
+    return {
+      provider: 's3',
+      endpoint: settings.endpoint,
+      region: settings.region,
+      bucket: settings.bucket,
+      key: settings.key,
+      accessKeyId: settings.accessKeyId,
+      secretAccessKey: settings.secretAccessKey
+    }
+  }
+
+  return { provider: 'none' }
+}
+
+function normalizeBackupSyncSettings(
+  input: BackupSyncSettings,
+  current: BackupSyncSettings
+): BackupSyncSettings {
+  if (input.provider === 'webdav') {
+    const remoteUrl = input.remoteUrl.trim()
+    validateHttpUrl(remoteUrl, 'WebDAV URL')
+
+    return {
+      provider: 'webdav',
+      remoteUrl,
+      username: optionalTrim(input.username),
+      password: normalizeSecret(
+        input.password,
+        current.provider === 'webdav' ? current.password : undefined
+      )
+    }
+  }
+
+  if (input.provider === 's3') {
+    const endpoint = optionalTrim(input.endpoint)?.replace(/\/+$/, '')
+    if (endpoint) validateHttpUrl(endpoint, 'S3 Endpoint')
+
+    const secretAccessKey = normalizeSecret(
+      input.secretAccessKey,
+      current.provider === 's3' ? current.secretAccessKey : undefined
+    )
+
+    if (!secretAccessKey) {
+      throw new Error('请输入 S3 Secret Access Key。')
+    }
+
+    return {
+      provider: 's3',
+      endpoint,
+      region: optionalTrim(input.region) ?? 'us-east-1',
+      bucket: requireTrimmed(input.bucket, '请输入 S3 Bucket。'),
+      key: requireTrimmed(input.key, '请输入 S3 对象路径。'),
+      accessKeyId: requireTrimmed(input.accessKeyId, '请输入 S3 Access Key ID。'),
+      secretAccessKey
+    }
+  }
+
+  return { provider: 'none' }
+}
+
+function redactBackupSyncSettings(settings: BackupSyncSettings): BackupSyncSettings {
+  if (settings.provider === 'webdav') {
+    return {
+      provider: 'webdav',
+      remoteUrl: settings.remoteUrl,
+      username: settings.username,
+      passwordConfigured: Boolean(settings.password)
+    }
+  }
+
+  if (settings.provider === 's3') {
+    return {
+      provider: 's3',
+      endpoint: settings.endpoint,
+      region: settings.region,
+      bucket: settings.bucket,
+      key: settings.key,
+      accessKeyId: settings.accessKeyId,
+      secretAccessKeyConfigured: Boolean(settings.secretAccessKey)
+    }
+  }
+
+  return { provider: 'none' }
+}
+
+function optionalTrim(value?: string): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function requireTrimmed(value: string | undefined, message: string): string {
+  const trimmed = optionalTrim(value)
+  if (!trimmed) throw new Error(message)
+  return trimmed
+}
+
+function normalizeSecret(
+  nextValue: string | undefined,
+  currentValue: string | undefined
+): string | undefined {
+  const nextSecret = optionalTrim(nextValue)
+  return nextSecret ?? currentValue
+}
+
+function validateHttpUrl(value: string, label: string): void {
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error(`${label} 格式无效。`)
+  }
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error(`${label} 只支持 http 或 https。`)
+  }
+}
+
+function encryptBackupSyncSettings(settings: BackupSyncSettings): string {
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', getSettingsEncryptionKey(), iv)
+  const plaintext = JSON.stringify(settings)
+  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
+  const payload: EncryptedSettingsPayload = {
+    version: 1,
+    alg: 'aes-256-gcm',
+    iv: iv.toString('base64'),
+    authTag: cipher.getAuthTag().toString('base64'),
+    ciphertext: ciphertext.toString('base64')
+  }
+
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64')
+}
+
+function decryptBackupSyncSettings(value: string): string {
+  const payload = JSON.parse(
+    Buffer.from(value, 'base64').toString('utf8')
+  ) as EncryptedSettingsPayload
+  if (payload.version !== 1 || payload.alg !== 'aes-256-gcm') {
+    throw new Error('远端同步配置加密格式不支持。')
+  }
+
+  const decipher = createDecipheriv(
+    'aes-256-gcm',
+    getSettingsEncryptionKey(),
+    Buffer.from(payload.iv, 'base64')
+  )
+  decipher.setAuthTag(Buffer.from(payload.authTag, 'base64'))
+
+  return Buffer.concat([
+    decipher.update(Buffer.from(payload.ciphertext, 'base64')),
+    decipher.final()
+  ]).toString('utf8')
+}
+
+function getSettingsEncryptionKey(): Buffer {
+  return createHash('sha256').update(getDatabaseKey()).digest()
 }
 
 function readNumber(row: SettingRow | undefined, fallback: number): number {

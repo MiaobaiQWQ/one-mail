@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Trash2, X } from 'lucide-react'
+import { CheckCheck, Trash2, X } from 'lucide-react'
 
 import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
@@ -7,21 +7,25 @@ import { useI18n } from '@renderer/lib/i18n'
 
 type MailListSelectionToolbarProps = {
   selectedCount: number
+  unreadSelectedCount: number
   allVisibleSelected: boolean
   someVisibleSelected: boolean
   disabled?: boolean
   onSelectAllVisible: () => void
   onClearSelection: () => void
+  onMarkSelectedRead: () => void
   onDeleteSelected: () => void
 }
 
 export function MailListSelectionToolbar({
   selectedCount,
+  unreadSelectedCount,
   allVisibleSelected,
   someVisibleSelected,
   disabled = false,
   onSelectAllVisible,
   onClearSelection,
+  onMarkSelectedRead,
   onDeleteSelected
 }: MailListSelectionToolbarProps): React.JSX.Element {
   const { t } = useI18n()
@@ -37,6 +41,15 @@ export function MailListSelectionToolbar({
       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
         {t('mail.selection.selectedCount', { count: selectedCount })}
       </span>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={disabled || unreadSelectedCount === 0}
+        onClick={onMarkSelectedRead}
+      >
+        <CheckCheck data-icon="inline-start" />
+        {t('mail.selection.markRead')}
+      </Button>
       <Button size="sm" variant="outline" disabled={disabled} onClick={onDeleteSelected}>
         <Trash2 data-icon="inline-start" />
         {t('mail.selection.deletePermanently')}
