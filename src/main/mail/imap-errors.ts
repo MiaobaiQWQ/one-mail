@@ -45,7 +45,7 @@ export function sanitizeImapResponse(value: string): string {
 }
 
 export function isImapAuthErrorMessage(message: string): boolean {
-  return /凭据不存在|凭据格式无效|凭据解密失败|重新保存密码|IMAP 登录认证失败|AUTHENTICATE failed|AUTHENTICATIONFAILED|Invalid credentials|OAuth 凭据|refresh token 不存在|重新登录 Outlook|AADSTS70000|scopes requested are unauthorized or expired|grant the client application access|Microsoft OAuth 未授予|access token 不是 Outlook IMAP/i.test(
+  return /凭据不存在|凭据格式无效|凭据解密失败|重新保存密码|IMAP 登录认证失败|AUTHENTICATE failed|AUTHENTICATIONFAILED|Invalid credentials|OAuth 凭据|refresh token 不存在|重新登录 Outlook|AADSTS70000|scopes requested are unauthorized or expired|grant the client application access|Microsoft OAuth 未授予|access token 不是 Outlook IMAP|User is authenticated but not connected|authenticated but not connected/i.test(
     message
   )
 }

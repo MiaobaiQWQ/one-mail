@@ -134,34 +134,76 @@ function getTrayLabels(): TrayLabels {
 function createTrayIcon(iconPath: string): string | NativeImage {
   if (process.platform !== 'darwin') return iconPath
 
-  const source = nativeImage.createFromPath(iconPath)
-  if (source.isEmpty()) return iconPath
-
-  // macOS status-bar icons are monochrome template images. Extract the white
-  // envelope from the app icon and discard its blue rounded-square background.
-  const size = 36
-  const resized = source.resize({ width: size, height: size, quality: 'best' })
-  const bitmap = Buffer.from(resized.toBitmap())
-
-  for (let offset = 0; offset < bitmap.length; offset += 4) {
-    const blue = bitmap[offset]
-    const green = bitmap[offset + 1]
-    const red = bitmap[offset + 2]
-    const sourceAlpha = bitmap[offset + 3]
-    const luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722
-    const envelopeCoverage = Math.max(0, Math.min(1, (luminance - 175) / 55))
-
-    bitmap[offset] = 0
-    bitmap[offset + 1] = 0
-    bitmap[offset + 2] = 0
-    bitmap[offset + 3] = Math.round(sourceAlpha * envelopeCoverage)
-  }
-
-  const templateIcon = nativeImage.createFromBitmap(bitmap, {
-    width: size,
-    height: size,
+  const templateIcon = nativeImage.createFromBitmap(createMacosTrayIconBitmap(), {
+    width: MACOS_TRAY_ICON_PIXEL_SIZE,
+    height: MACOS_TRAY_ICON_PIXEL_SIZE,
     scaleFactor: 2
   })
   templateIcon.setTemplateImage(true)
   return templateIcon
+}
+
+const MACOS_TRAY_ICON_PIXEL_SIZE = 36
+
+function createMacosTrayIconBitmap(): Buffer {
+  const bitmap = Buffer.alloc(MACOS_TRAY_ICON_PIXEL_SIZE * MACOS_TRAY_ICON_PIXEL_SIZE * 4)
+  const strokeWidth = 4
+
+  drawLine(bitmap, 3, 8, 33, 8, strokeWidth)
+  drawLine(bitmap, 3, 8, 3, 28, strokeWidth)
+  drawLine(bitmap, 33, 8, 33, 28, strokeWidth)
+  drawLine(bitmap, 3, 28, 33, 28, strokeWidth)
+  drawLine(bitmap, 4, 9, 18, 21, strokeWidth)
+  drawLine(bitmap, 32, 9, 18, 21, strokeWidth)
+  drawLine(bitmap, 4, 27, 15, 17, strokeWidth)
+  drawLine(bitmap, 32, 27, 21, 17, strokeWidth)
+
+  return bitmap
+}
+
+function drawLine(
+  bitmap: Buffer,
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  width: number
+): void {
+  const distance = Math.hypot(endX - startX, endY - startY)
+  const steps = Math.max(1, Math.ceil(distance * 2))
+
+  for (let step = 0; step <= steps; step += 1) {
+    const progress = step / steps
+    drawDot(
+      bitmap,
+      startX + (endX - startX) * progress,
+      startY + (endY - startY) * progress,
+      width / 2
+    )
+  }
+}
+
+function drawDot(bitmap: Buffer, centerX: number, centerY: number, radius: number): void {
+  const minX = Math.floor(centerX - radius)
+  const maxX = Math.ceil(centerX + radius)
+  const minY = Math.floor(centerY - radius)
+  const maxY = Math.ceil(centerY + radius)
+
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      if (x < 0 || y < 0 || x >= MACOS_TRAY_ICON_PIXEL_SIZE || y >= MACOS_TRAY_ICON_PIXEL_SIZE) {
+        continue
+      }
+      if (Math.hypot(x - centerX, y - centerY) > radius) continue
+      setBitmapAlpha(bitmap, x, y, 255)
+    }
+  }
+}
+
+function setBitmapAlpha(bitmap: Buffer, x: number, y: number, alpha: number): void {
+  const offset = (y * MACOS_TRAY_ICON_PIXEL_SIZE + x) * 4
+  bitmap[offset] = 0
+  bitmap[offset + 1] = 0
+  bitmap[offset + 2] = 0
+  bitmap[offset + 3] = Math.max(bitmap[offset + 3], alpha)
 }

@@ -6,7 +6,9 @@ export function getErrorMessage(error: unknown, fallback: string): string {
 
 export function shouldShowOutlookImapHelp(message: string, account?: Account | null): boolean {
   if (account?.providerKey && normalizeProviderKey(account.providerKey) !== 'outlook') return false
-  return /IMAP OAuth 登录认证失败|AUTHENTICATE failed/i.test(message)
+  return /IMAP OAuth 登录认证失败|AUTHENTICATE failed|User is authenticated but not connected|authenticated but not connected/i.test(
+    message
+  )
 }
 
 export function createOutlookHelpAccount(accountId: number, email: string): Account {

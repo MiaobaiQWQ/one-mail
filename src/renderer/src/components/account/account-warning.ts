@@ -31,6 +31,25 @@ export function getAccountWarning(account: Account, t: Translate): AccountWarnin
 
   if (status === 'syncing') return null
 
+  if (isOAuthAccount && lastError && isMicrosoftImapAccessError(lastError)) {
+    return withTooltip(t, {
+      label: t('account.warning.label'),
+      title: t('account.outlookImapHelp.title'),
+      message: t('account.warning.outlookImapAccessMessage'),
+      primaryAction: 'retry',
+      primaryLabel: t('account.warning.resync'),
+      secondaryAction: 'reauthorize',
+      secondaryLabel: t('account.warning.primaryReauthorize'),
+      steps: [
+        t('account.outlookImapHelp.step1'),
+        t('account.outlookImapHelp.step2'),
+        t('account.outlookImapHelp.step3'),
+        t('account.outlookImapHelp.step4'),
+        t('account.outlookImapHelp.step5')
+      ]
+    })
+  }
+
   if (
     status === 'auth_error' ||
     CREDENTIAL_WARNING_STATES.has(credentialState ?? '') ||
@@ -135,6 +154,10 @@ function isMicrosoftReauthorizationError(message: string): boolean {
   return /AADSTS70000|scopes requested are unauthorized or expired|grant the client application access|refresh token 不存在|重新登录 Outlook|OAuth 凭据|Microsoft OAuth 未授予|access token 不是 Outlook IMAP|OAuth access token/i.test(
     message
   )
+}
+
+function isMicrosoftImapAccessError(message: string): boolean {
+  return /User is authenticated but not connected|authenticated but not connected/i.test(message)
 }
 
 function withTooltip(

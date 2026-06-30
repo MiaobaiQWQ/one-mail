@@ -40,6 +40,7 @@ export function OutlookImapHelpDialog({
         <li>{t('account.outlookImapHelp.step2')}</li>
         <li>{t('account.outlookImapHelp.step3')}</li>
         <li>{t('account.outlookImapHelp.step4')}</li>
+        <li>{t('account.outlookImapHelp.step5')}</li>
       </ol>
     </ResponsiveDialog>
   )

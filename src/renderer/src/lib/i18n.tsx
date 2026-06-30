@@ -268,6 +268,8 @@ const zhCN = {
   'account.outlookImapHelp.step2': '点击 设置 > 邮件 > 转发和 IMAP。',
   'account.outlookImapHelp.step3': '登录并确保“允许设备和应用使用 IMAP”已开启。',
   'account.outlookImapHelp.step4': '点击保存。',
+  'account.outlookImapHelp.step5':
+    '如果仍然失败，打开 account.live.com/activity，把最近的登录活动标记为“这是我本人”。',
   'account.edit.title': '编辑账号',
   'account.edit.oauthDescription':
     'Microsoft OAuth 账号在这里仅修改别名；重新授权请删除后重新添加。',
@@ -304,6 +306,8 @@ const zhCN = {
     'Microsoft 授权已失效，需要重新登录并授权 Outlook IMAP 权限。',
   'account.warning.oauthScopeMessage':
     'Microsoft 授权已过期或缺少 Outlook IMAP 权限，需要重新登录并授权。',
+  'account.warning.outlookImapAccessMessage':
+    'Microsoft 登录已通过，但 Outlook 没有允许 IMAP 客户端连接这个邮箱。',
   'account.warning.networkMessage': '暂时无法连接到邮箱服务器。',
   'account.warning.syncMessage': '同步邮件时遇到错误。',
   'account.warning.primaryReauthorize': '重新授权',
@@ -785,6 +789,8 @@ const enUS: TranslationMap = {
   'account.outlookImapHelp.step3':
     'Sign in and make sure “Let devices and apps use IMAP” is enabled.',
   'account.outlookImapHelp.step4': 'Save the change.',
+  'account.outlookImapHelp.step5':
+    'If it still fails, open account.live.com/activity and mark the recent sign-in activity as “This was me”.',
   'account.edit.title': 'Edit account',
   'account.edit.oauthDescription':
     'Only the alias can be changed here for Microsoft OAuth accounts. Remove and add the account again to reauthorize.',
@@ -825,6 +831,8 @@ const enUS: TranslationMap = {
     'Microsoft authorization is no longer valid. Sign in again and grant Outlook IMAP access.',
   'account.warning.oauthScopeMessage':
     'Microsoft authorization has expired or is missing Outlook IMAP access. Sign in again and grant access.',
+  'account.warning.outlookImapAccessMessage':
+    'Microsoft sign-in succeeded, but Outlook has not allowed IMAP clients to connect to this mailbox.',
   'account.warning.networkMessage': 'OneMail cannot connect to the mail server right now.',
   'account.warning.syncMessage': 'An error occurred while syncing mail.',
   'account.warning.primaryReauthorize': 'Reauthorize',
