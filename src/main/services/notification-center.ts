@@ -1,4 +1,4 @@
-import { BrowserWindow, Notification, nativeImage, shell, type NativeImage } from 'electron'
+import { BrowserWindow, Notification, nativeImage, type NativeImage } from 'electron'
 import appIcon from '../../../resources/icon.png?asset'
 import { getProviderLogoMetadata } from '../../shared/provider-metadata'
 import { getAccount } from '../db/repositories/account.repository'
@@ -114,13 +114,8 @@ export async function notifyNewMail({
   }
 
   // We play sound through HTML5 audio in renderer now, so don't play here
-  // playNotificationSound()
   broadcastNewMail(notification)
   void showDesktopNotifications(notification, account, settings)
-}
-
-function playNotificationSound(): void {
-  shell.beep()
 }
 
 function broadcastNewMail(notification: NewMailNotification): void {
