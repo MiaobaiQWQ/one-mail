@@ -30,7 +30,9 @@ export async function testNotification(): Promise<boolean> {
     const isEn = locale === 'en-US'
 
     const title = isEn ? 'OneMail Test Notification' : 'OneMail 测试通知'
-    const body = isEn ? 'You have 5 new emails from John, Alice, and others' : '您有 5 封新邮件，来自 张三、李四 等'
+    const body = isEn
+      ? 'You have 5 new emails from John, Alice, and others'
+      : '您有 5 封新邮件，来自 张三、李四 等'
 
     if (process.platform === 'win32') {
       const desktopNotification = new Notification({
@@ -39,11 +41,11 @@ export async function testNotification(): Promise<boolean> {
         icon: appIcon,
         silent: silent
       })
-      
+
       desktopNotification.on('show', () => {
         console.log('Test notification shown (Win32)')
       })
-      
+
       desktopNotification.on('failed', (err) => {
         console.error('Test notification failed (Win32):', err)
       })
@@ -63,11 +65,11 @@ export async function testNotification(): Promise<boolean> {
       icon: appIcon,
       silent: silent
     })
-    
+
     desktopNotification.on('show', () => {
       console.log('Test notification shown')
     })
-    
+
     desktopNotification.on('failed', (err) => {
       console.error('Test notification failed:', err)
     })
@@ -160,14 +162,18 @@ function showAggregatedNotification(
   locale: string
 ): void {
   const accountName = notification.accountLabel || notification.accountEmail || 'OneMail'
-  
+
   const isEn = locale === 'en-US'
-  const title = isEn 
-    ? `${accountName}: ${notification.messageCount} new emails` 
+  const title = isEn
+    ? `${accountName}: ${notification.messageCount} new emails`
     : `${accountName} 收到 ${notification.messageCount} 封新邮件`
-  
-  const senders = Array.from(new Set(notification.messages.map(m => m.fromName || m.fromEmail).filter(Boolean)))
-  let body = isEn ? `From: ${senders.slice(0, 3).join(', ')}` : `发件人: ${senders.slice(0, 3).join(', ')}`
+
+  const senders = Array.from(
+    new Set(notification.messages.map((m) => m.fromName || m.fromEmail).filter(Boolean))
+  )
+  let body = isEn
+    ? `From: ${senders.slice(0, 3).join(', ')}`
+    : `发件人: ${senders.slice(0, 3).join(', ')}`
   if (senders.length > 3) {
     body += isEn ? ' and others' : ' 等'
   }
@@ -212,21 +218,22 @@ function showDesktopNotification(
   const isEn = locale === 'en-US'
   const sender = message?.fromName ?? message?.fromEmail ?? notification.accountLabel
   const verificationCode = message?.verificationCode
-  
+
   const defaultTitle = isEn ? 'New Mail' : '收到新邮件'
   const title = message?.subject || defaultTitle
-  
+
   let bodyStr = ''
   if (verificationCode) {
     bodyStr = isEn ? `Code ${verificationCode}` : `验证码 ${verificationCode}`
   } else if (message?.snippet) {
     bodyStr = message.snippet
   }
-  
-  const body = [sender, bodyStr].filter(Boolean).join(' - ') ||
-      notification.accountLabel ||
-      notification.accountEmail ||
-      'OneMail'
+
+  const body =
+    [sender, bodyStr].filter(Boolean).join(' - ') ||
+    notification.accountLabel ||
+    notification.accountEmail ||
+    'OneMail'
 
   if (process.platform === 'win32') {
     const desktopNotification = new Notification({

@@ -1,4 +1,7 @@
-import { getMessageComposeSource, type MessageComposeAddress } from '../db/repositories/message.repository'
+import {
+  getMessageComposeSource,
+  type MessageComposeAddress
+} from '../db/repositories/message.repository'
 import type { MailMessageAttachment } from '../../shared/types'
 import { loadMessageBodyFromImap } from './body-loader'
 import { normalizeSubjectPrefix } from './message-composer'

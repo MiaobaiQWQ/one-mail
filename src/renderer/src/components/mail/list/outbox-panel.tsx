@@ -62,7 +62,9 @@ export function OutboxPanel({
                         {message.subject || t('mail.outbox.noSubject')}
                       </div>
                       <div className="mt-1 truncate text-xs text-muted-foreground">
-                        {message.to.length > 0 ? message.to.join(', ') : t('mail.outbox.noRecipients')}
+                        {message.to.length > 0
+                          ? message.to.join(', ')
+                          : t('mail.outbox.noRecipients')}
                       </div>
                     </div>
                     <Badge variant={message.status === 'failed' ? 'destructive' : 'outline'}>
@@ -125,7 +127,10 @@ export function OutboxPanel({
   )
 }
 
-function getStatusLabel(status: OutboxMessage['status'], t: (key: TranslationKey) => string): string {
+function getStatusLabel(
+  status: OutboxMessage['status'],
+  t: (key: TranslationKey) => string
+): string {
   if (status === 'draft') return t('mail.outbox.statusDraft')
   if (status === 'failed') return t('mail.outbox.statusFailed')
   if (status === 'sending') return t('mail.outbox.statusSending')

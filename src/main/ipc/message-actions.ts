@@ -3,7 +3,8 @@ import {
   bulkDelete,
   hideMessageLocally,
   permanentlyDeleteMessage,
-  restoreMessage
+  restoreMessage,
+  trashMessage
 } from '../mail/message-delete'
 import type {
   MessageBulkDeleteInput,
@@ -19,9 +20,10 @@ export function registerMessageActionIpc(): void {
     return deleteOneMessage(input)
   })
   ipcMain.handle('messages/bulkDelete', async (_event, input: MessageBulkDeleteInput) => {
-    const mode = input.mode === 'local_hide' ? 'local_hide' : 'permanent'
+    const mode = input.mode === 'local_hide' ? 'local_hide' : input.mode === 'trash' ? 'trash' : 'permanent'
     const result = await bulkDelete(input.messageIds, {
-      localOnly: mode === 'local_hide'
+      localOnly: mode === 'local_hide',
+      mode
     })
 
     return {
@@ -48,11 +50,16 @@ export function registerMessageActionIpc(): void {
 }
 
 async function deleteOneMessage(input: MessageDeleteInput): Promise<MessageDeleteResult> {
-  const mode = input.mode === 'local_hide' ? 'local_hide' : 'permanent'
+  const mode = input.mode === 'local_hide' ? 'local_hide' : input.mode === 'trash' ? 'trash' : 'permanent'
 
   if (mode === 'local_hide') {
     const result = hideMessageLocally(input.messageId)
     return toDeleteResult(result.messageId, result.accountId, mode, true, true)
+  }
+
+  if (mode === 'trash') {
+    const result = await trashMessage(input.messageId)
+    return toDeleteResult(result.messageId, result.accountId, mode, true, false)
   }
 
   const result = await permanentlyDeleteMessage(input.messageId)

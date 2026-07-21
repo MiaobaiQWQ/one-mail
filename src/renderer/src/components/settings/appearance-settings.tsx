@@ -27,21 +27,21 @@ export function AppearanceSettings(): React.JSX.Element {
     const applyDomTheme = () => {
       const root = document.documentElement
       root.classList.remove('light', 'dark')
-      
+
       let domTheme = theme
       if (theme === 'system') {
         domTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       }
-      
+
       root.classList.add(domTheme)
       root.style.colorScheme = domTheme
-      
+
       if (theme === 'system') {
         window.localStorage.removeItem('theme')
       } else {
         window.localStorage.setItem('theme', theme)
       }
-      
+
       void window.api?.system?.setTitleBarTheme?.(domTheme)
     }
 
@@ -92,13 +92,7 @@ export function AppearanceSettings(): React.JSX.Element {
               icon={MousePointerClick}
               title={t('settings.contextMenu.title')}
               description={t('settings.contextMenu.description')}
-              control={
-                <Switch
-                  size="sm"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              }
+              control={<Switch size="sm" checked={field.value} onCheckedChange={field.onChange} />}
             />
           )}
         />

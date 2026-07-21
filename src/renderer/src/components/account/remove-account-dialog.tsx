@@ -69,9 +69,7 @@ export function RemoveAccountDialog({
       }
     >
       <div className="flex flex-col gap-2 text-xs text-muted-foreground">
-        <p>
-          {t('account.remove.summary', { name: account.name })}
-        </p>
+        <p>{t('account.remove.summary', { name: account.name })}</p>
         <p>{t('account.remove.remoteSafe')}</p>
         {error ? <FieldError>{error}</FieldError> : null}
       </div>

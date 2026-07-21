@@ -34,10 +34,14 @@ export function DeleteMessageDialog({
   const { t } = useI18n()
   const count = messages.length
   const firstMessage = messages[0]
-  const subject = firstMessage ? getDisplaySubject(firstMessage, t) : t('mail.delete.subjectFallback')
+  const subject = firstMessage
+    ? getDisplaySubject(firstMessage, t)
+    : t('mail.delete.subjectFallback')
   const meta =
     count === 1
-      ? [firstMessage?.from, firstMessage?.dateLabel || firstMessage?.time].filter(Boolean).join(' · ')
+      ? [firstMessage?.from, firstMessage?.dateLabel || firstMessage?.time]
+          .filter(Boolean)
+          .join(' · ')
       : t('mail.delete.remoteMeta')
 
   return (

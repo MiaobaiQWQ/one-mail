@@ -553,10 +553,7 @@ function parseImapString(value: string): string | undefined {
   return result
 }
 
-function detectMailboxRole(
-  path: string,
-  attributes: string[]
-): SyncedFolderRole {
+function detectMailboxRole(path: string, attributes: string[]): SyncedFolderRole {
   if (hasAttribute(attributes, 'Inbox') || path.toUpperCase() === 'INBOX') return 'inbox'
   if (hasAttribute(attributes, 'Junk')) return 'junk'
   if (hasAttribute(attributes, 'Sent')) return 'sent'
@@ -605,7 +602,9 @@ function detectMailboxRole(
   }
 
   if (
-    ['trash', 'deleted messages', 'deleted items', '已删除', '已删除邮件', '已删除的邮件'].includes(normalizedPath) ||
+    ['trash', 'deleted messages', 'deleted items', '已删除', '已删除邮件', '已删除的邮件'].includes(
+      normalizedPath
+    ) ||
     normalizedPath.endsWith('/trash') ||
     normalizedPath.endsWith('/已删除')
   ) {

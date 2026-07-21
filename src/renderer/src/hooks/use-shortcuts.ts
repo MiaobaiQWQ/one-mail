@@ -15,19 +15,20 @@ export function eventToKeyString(e: KeyboardEvent): string {
 
 export function useShortcuts(handlers: Record<string, () => void>) {
   const { settings } = useSettingsStore()
-  
+
   React.useEffect(() => {
     if (!settings?.shortcuts) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
-      
+      const isInput =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+
       const keyString = eventToKeyString(e)
-      
-      const binding = settings.shortcuts.find(s => s.keys === keyString)
+
+      const binding = settings.shortcuts.find((s) => s.keys === keyString)
       if (!binding) return
-      
+
       // Allow single key shortcuts only if not in input
       if (isInput && !keyString.includes('+')) {
         return

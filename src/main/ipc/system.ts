@@ -20,7 +20,7 @@ export function registerSystemIpc(): void {
 
   ipcMain.handle('system/setTitleBarTheme', (event, theme: unknown): boolean => {
     if (process.platform !== 'win32') return false
-    
+
     let activeTheme = theme as AppTheme
     if (theme === 'system') {
       activeTheme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'

@@ -50,8 +50,9 @@ import {
 } from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 import { selectMailAttachments, type ComposeDraft, type SendMessageInput } from '@renderer/lib/api'
+import * as contactsApi from '@renderer/lib/api/contacts'
 import { useI18n } from '@renderer/lib/i18n'
-import type { MailAttachmentInput } from '../../../../../shared/types'
+import type { MailAttachmentInput, Contact } from '../../../../../shared/types'
 
 const COMPOSER_ADDRESS_FIELD_CLASS =
   'min-h-10 items-center gap-3 border-b px-4 py-1.5 *:data-[slot=field-label]:flex-none'
@@ -121,6 +122,12 @@ export function MailComposer({
   // 拖拽状态
   const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = React.useState(false)
+  const [contacts, setContacts] = React.useState<Contact[]>([])
+
+  React.useEffect(() => {
+    void contactsApi.listContacts().then(setContacts).catch(console.error)
+  }, [])
+
   const dragStartRef = React.useRef<{ x: number; y: number } | null>(null)
   const initialPositionRef = React.useRef<{ x: number; y: number } | null>(null)
   const dialogRef = React.useRef<HTMLElement | null>(null)
@@ -249,23 +256,26 @@ export function MailComposer({
   }, [draftKey, draft?.bcc?.length, draft?.cc?.length])
 
   // 拖拽事件处理
-  const handleMouseDown = React.useCallback((event: React.MouseEvent) => {
-    if (event.target instanceof HTMLButtonElement || event.target instanceof SVGElement) {
-      return
-    }
-    setIsDragging(true)
-    dragStartRef.current = { x: event.clientX, y: event.clientY }
-    
-    // 获取当前弹窗的实际位置作为起点
-    if (position) {
-      initialPositionRef.current = position
-    } else if (dialogRef.current) {
-      const rect = dialogRef.current.getBoundingClientRect()
-      initialPositionRef.current = { x: rect.left, y: rect.top }
-    } else {
-      initialPositionRef.current = { x: 0, y: 0 }
-    }
-  }, [position])
+  const handleMouseDown = React.useCallback(
+    (event: React.MouseEvent) => {
+      if (event.target instanceof HTMLButtonElement || event.target instanceof SVGElement) {
+        return
+      }
+      setIsDragging(true)
+      dragStartRef.current = { x: event.clientX, y: event.clientY }
+
+      // 获取当前弹窗的实际位置作为起点
+      if (position) {
+        initialPositionRef.current = position
+      } else if (dialogRef.current) {
+        const rect = dialogRef.current.getBoundingClientRect()
+        initialPositionRef.current = { x: rect.left, y: rect.top }
+      } else {
+        initialPositionRef.current = { x: 0, y: 0 }
+      }
+    },
+    [position]
+  )
 
   React.useEffect(() => {
     if (!isDragging) return
@@ -306,19 +316,18 @@ export function MailComposer({
         aria-labelledby="mail-composer-title"
         className={cn(
           'app-no-drag fixed flex max-h-[calc(100vh-5rem)] w-[min(calc(100vw-2rem),38rem)] flex-col overflow-hidden rounded-t-lg border bg-background shadow-2xl',
-          expanded &&
-            'w-[min(calc(100vw-2rem),56rem)] sm:w-[min(calc(100vw-4rem),56rem)]'
+          expanded && 'w-[min(calc(100vw-2rem),56rem)] sm:w-[min(calc(100vw-4rem),56rem)]'
         )}
         style={{
           right: position ? undefined : '1rem',
           bottom: position ? undefined : '2.25rem',
-          top: position ? position.y : (expanded ? '2.5rem' : undefined),
+          top: position ? position.y : expanded ? '2.5rem' : undefined,
           left: position ? position.x : undefined,
           transform: position ? undefined : undefined,
           cursor: isDragging ? 'grabbing' : undefined
         }}
       >
-        <header 
+        <header
           className="flex h-10 shrink-0 items-center justify-between gap-3 bg-muted px-3 text-foreground cursor-grab select-none"
           style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
           onMouseDown={handleMouseDown}
@@ -370,7 +379,9 @@ export function MailComposer({
         <div className="min-h-0 flex-1 overflow-auto">
           <FieldGroup className="gap-0">
             <Field className={COMPOSER_ADDRESS_FIELD_CLASS} orientation="horizontal">
-              <ComposerFieldLabel htmlFor="composer-account">{t('mail.composer.from')}</ComposerFieldLabel>
+              <ComposerFieldLabel htmlFor="composer-account">
+                {t('mail.composer.from')}
+              </ComposerFieldLabel>
               <NativeSelect
                 id="composer-account"
                 size="sm"
@@ -392,6 +403,7 @@ export function MailComposer({
               <AddressInput
                 id="composer-to"
                 value={form.to}
+                contacts={contacts}
                 disabled={pending}
                 placeholder="name@example.com"
                 variant="ghost"
@@ -407,10 +419,13 @@ export function MailComposer({
             </Field>
             {ccVisible ? (
               <Field className={COMPOSER_ADDRESS_FIELD_CLASS} orientation="horizontal">
-                <ComposerFieldLabel htmlFor="composer-cc">{t('mail.composer.cc')}</ComposerFieldLabel>
+                <ComposerFieldLabel htmlFor="composer-cc">
+                  {t('mail.composer.cc')}
+                </ComposerFieldLabel>
                 <AddressInput
                   id="composer-cc"
                   value={form.cc}
+                  contacts={contacts}
                   disabled={pending}
                   variant="ghost"
                   onChange={(value) => updateForm({ cc: value })}
@@ -419,10 +434,13 @@ export function MailComposer({
             ) : null}
             {bccVisible ? (
               <Field className={COMPOSER_ADDRESS_FIELD_CLASS} orientation="horizontal">
-                <ComposerFieldLabel htmlFor="composer-bcc">{t('mail.composer.bcc')}</ComposerFieldLabel>
+                <ComposerFieldLabel htmlFor="composer-bcc">
+                  {t('mail.composer.bcc')}
+                </ComposerFieldLabel>
                 <AddressInput
                   id="composer-bcc"
                   value={form.bcc}
+                  contacts={contacts}
                   disabled={pending}
                   variant="ghost"
                   onChange={(value) => updateForm({ bcc: value })}
@@ -463,7 +481,9 @@ export function MailComposer({
                     >
                       <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate">
-                        {attachment.filename ?? attachment.filePath ?? t('mail.composer.attachmentFallback')}
+                        {attachment.filename ??
+                          attachment.filePath ??
+                          t('mail.composer.attachmentFallback')}
                       </span>
                       <span className="shrink-0 text-muted-foreground">
                         {formatBytes(attachment.sizeBytes)}
@@ -658,37 +678,41 @@ function MailBodyEditor({
 }): React.JSX.Element {
   const { t } = useI18n()
   const lastDraftKeyRef = React.useRef(draftKey)
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        link: false
-      }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        defaultProtocol: 'https'
-      }),
-      ComposerTextAlignExtension,
-      Placeholder.configure({
-        placeholder: t('mail.composer.bodyPlaceholder')
-      })
-    ],
-    content: bodyHtml || textToHtml(bodyText),
-    editable: !disabled,
-    immediatelyRender: false,
-    editorProps: {
-      attributes: {
-        id: 'composer-body',
-        class: 'composer-body min-h-full px-3 py-3 outline-none break-words focus-visible:outline-none'
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({
+          link: false
+        }),
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          defaultProtocol: 'https'
+        }),
+        ComposerTextAlignExtension,
+        Placeholder.configure({
+          placeholder: t('mail.composer.bodyPlaceholder')
+        })
+      ],
+      content: bodyHtml || textToHtml(bodyText),
+      editable: !disabled,
+      immediatelyRender: false,
+      editorProps: {
+        attributes: {
+          id: 'composer-body',
+          class:
+            'composer-body min-h-full px-3 py-3 outline-none break-words focus-visible:outline-none'
+        }
+      },
+      onUpdate: ({ editor: currentEditor }) => {
+        onChange({
+          bodyHtml: currentEditor.getHTML(),
+          bodyText: currentEditor.getText({ blockSeparator: '\n\n' })
+        })
       }
     },
-    onUpdate: ({ editor: currentEditor }) => {
-      onChange({
-        bodyHtml: currentEditor.getHTML(),
-        bodyText: currentEditor.getText({ blockSeparator: '\n\n' })
-      })
-    }
-  }, [t])
+    [t]
+  )
 
   React.useEffect(() => {
     editor?.setEditable(!disabled)

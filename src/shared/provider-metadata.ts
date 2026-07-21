@@ -107,7 +107,10 @@ export function normalizeProviderKey(providerKey?: string): NormalizedProviderKe
   return normalized
 }
 
-export function getProviderLogoMetadata(providerKey?: string, address?: string): ProviderLogoMetadata {
+export function getProviderLogoMetadata(
+  providerKey?: string,
+  address?: string
+): ProviderLogoMetadata {
   const normalizedProviderKey = normalizeProviderKey(providerKey)
   const metadata = PROVIDER_LOGO_METADATA[normalizedProviderKey]
   if (metadata) return metadata

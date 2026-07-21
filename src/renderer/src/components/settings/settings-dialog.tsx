@@ -49,12 +49,7 @@ import { TranslateSettings } from './translate-settings'
 import { PrivacySettings } from './privacy-settings'
 import { NotificationSettings } from './notification-settings'
 import { Button } from '@renderer/components/ui/button'
-import {
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel
-} from '@renderer/components/ui/field'
+import { FieldDescription, FieldError, FieldGroup, FieldLabel } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import {
   Select,
@@ -238,7 +233,7 @@ export function SettingsDialog({
     mode: 'onChange'
   })
   const watchedValues = useWatch({ control: form.control })
-  
+
   // 拖拽状态
   const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = React.useState(false)
@@ -248,26 +243,31 @@ export function SettingsDialog({
   const isDesktop = useMediaQuery('(min-width: 768px)')
 
   // 拖拽事件处理
-  const handleMouseDown = React.useCallback((event: React.MouseEvent) => {
-    if (event.target instanceof HTMLButtonElement || 
+  const handleMouseDown = React.useCallback(
+    (event: React.MouseEvent) => {
+      if (
+        event.target instanceof HTMLButtonElement ||
         event.target instanceof SVGElement ||
         event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLSelectElement) {
-      return
-    }
-    setIsDragging(true)
-    dragStartRef.current = { x: event.clientX, y: event.clientY }
-    
-    // 获取当前弹窗的实际位置作为起点
-    if (position) {
-      initialPositionRef.current = position
-    } else if (dialogRef.current) {
-      const rect = dialogRef.current.getBoundingClientRect()
-      initialPositionRef.current = { x: rect.left, y: rect.top }
-    } else {
-      initialPositionRef.current = { x: 0, y: 0 }
-    }
-  }, [position])
+        event.target instanceof HTMLSelectElement
+      ) {
+        return
+      }
+      setIsDragging(true)
+      dragStartRef.current = { x: event.clientX, y: event.clientY }
+
+      // 获取当前弹窗的实际位置作为起点
+      if (position) {
+        initialPositionRef.current = position
+      } else if (dialogRef.current) {
+        const rect = dialogRef.current.getBoundingClientRect()
+        initialPositionRef.current = { x: rect.left, y: rect.top }
+      } else {
+        initialPositionRef.current = { x: 0, y: 0 }
+      }
+    },
+    [position]
+  )
 
   React.useEffect(() => {
     if (!isDragging) return
@@ -559,9 +559,7 @@ export function SettingsDialog({
       style={{
         left: position ? position.x : '50%',
         top: position ? position.y : '50%',
-        transform: position 
-          ? undefined
-          : 'translate(-50%, -50%)',
+        transform: position ? undefined : 'translate(-50%, -50%)',
         cursor: isDragging ? 'grabbing' : undefined
       }}
     >
@@ -612,36 +610,36 @@ export function SettingsDialog({
 
         <div className="h-full min-h-0 overflow-auto">
           <FormProvider {...form}>
-              {section === 'general' ? (
-                <GeneralSettingsForm form={form} error={error} />
-              ) : section === 'appearance' ? (
-                <AppearanceSettings />
-              ) : section === 'shortcuts' ? (
-                <ShortcutsSettings />
-              ) : section === 'translate' ? (
-                <TranslateSettings />
-              ) : section === 'privacy' ? (
-                <PrivacySettings />
-              ) : section === 'notification' ? (
-                <NotificationSettings />
-              ) : section === 'backup' ? (
-                <BackupSettings
-                  key={getBackupSyncSettingsKey(backupSyncSettings)}
-                  pending={backupPending}
-                  message={backupMessage}
-                  error={backupError}
-                  syncSettings={backupSyncSettings}
-                  onExport={handleExport}
-                  onImport={handleImport}
-                  onSaveSync={handleSaveBackupSync}
-                  onTestSync={handleTestBackupSync}
-                  onUploadSync={handleUploadBackupSync}
-                  onDownloadSync={handleDownloadBackupSync}
-                />
-              ) : (
-                <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
-              )}
-            </FormProvider>
+            {section === 'general' ? (
+              <GeneralSettingsForm form={form} error={error} />
+            ) : section === 'appearance' ? (
+              <AppearanceSettings />
+            ) : section === 'shortcuts' ? (
+              <ShortcutsSettings />
+            ) : section === 'translate' ? (
+              <TranslateSettings />
+            ) : section === 'privacy' ? (
+              <PrivacySettings />
+            ) : section === 'notification' ? (
+              <NotificationSettings />
+            ) : section === 'backup' ? (
+              <BackupSettings
+                key={getBackupSyncSettingsKey(backupSyncSettings)}
+                pending={backupPending}
+                message={backupMessage}
+                error={backupError}
+                syncSettings={backupSyncSettings}
+                onExport={handleExport}
+                onImport={handleImport}
+                onSaveSync={handleSaveBackupSync}
+                onTestSync={handleTestBackupSync}
+                onUploadSync={handleUploadBackupSync}
+                onDownloadSync={handleDownloadBackupSync}
+              />
+            ) : (
+              <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
+            )}
+          </FormProvider>
         </div>
       </div>
     </div>
@@ -686,36 +684,36 @@ export function SettingsDialog({
 
         <div className="h-full min-h-0 overflow-auto">
           <FormProvider {...form}>
-              {section === 'general' ? (
-                <GeneralSettingsForm form={form} error={error} />
-              ) : section === 'appearance' ? (
-                <AppearanceSettings />
-              ) : section === 'shortcuts' ? (
-                <ShortcutsSettings />
-              ) : section === 'translate' ? (
-                <TranslateSettings />
-              ) : section === 'privacy' ? (
-                <PrivacySettings />
-              ) : section === 'notification' ? (
-                <NotificationSettings />
-              ) : section === 'backup' ? (
-                <BackupSettings
-                  key={getBackupSyncSettingsKey(backupSyncSettings)}
-                  pending={backupPending}
-                  message={backupMessage}
-                  error={backupError}
-                  syncSettings={backupSyncSettings}
-                  onExport={handleExport}
-                  onImport={handleImport}
-                  onSaveSync={handleSaveBackupSync}
-                  onTestSync={handleTestBackupSync}
-                  onUploadSync={handleUploadBackupSync}
-                  onDownloadSync={handleDownloadBackupSync}
-                />
-              ) : (
-                <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
-              )}
-            </FormProvider>
+            {section === 'general' ? (
+              <GeneralSettingsForm form={form} error={error} />
+            ) : section === 'appearance' ? (
+              <AppearanceSettings />
+            ) : section === 'shortcuts' ? (
+              <ShortcutsSettings />
+            ) : section === 'translate' ? (
+              <TranslateSettings />
+            ) : section === 'privacy' ? (
+              <PrivacySettings />
+            ) : section === 'notification' ? (
+              <NotificationSettings />
+            ) : section === 'backup' ? (
+              <BackupSettings
+                key={getBackupSyncSettingsKey(backupSyncSettings)}
+                pending={backupPending}
+                message={backupMessage}
+                error={backupError}
+                syncSettings={backupSyncSettings}
+                onExport={handleExport}
+                onImport={handleImport}
+                onSaveSync={handleSaveBackupSync}
+                onTestSync={handleTestBackupSync}
+                onUploadSync={handleUploadBackupSync}
+                onDownloadSync={handleDownloadBackupSync}
+              />
+            ) : (
+              <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
+            )}
+          </FormProvider>
         </div>
       </div>
     </ResponsiveDialog>

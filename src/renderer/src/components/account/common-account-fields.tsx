@@ -2,7 +2,13 @@ import * as React from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 
 import { Input } from '@renderer/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@renderer/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@renderer/components/ui/select'
 import { useI18n } from '@renderer/lib/i18n'
 import type { AccountFormValues } from './account-form-types'
 import { AccountFormField } from './account-form-field'
@@ -24,7 +30,7 @@ export function CommonAccountFields({
 }: CommonAccountFieldsProps): React.JSX.Element {
   const { t } = useI18n()
   const avatarUrl = form.watch('avatarUrl')
-  
+
   const [cropDialogOpen, setCropDialogOpen] = React.useState(false)
   const [tempImageSrc, setTempImageSrc] = React.useState('')
 
@@ -107,13 +113,19 @@ export function CommonAccountFields({
       <AccountFormField
         id="account-avatar-text"
         label="自定义图标"
-        error={form.formState.errors.avatarText?.message || form.formState.errors.avatarUrl?.message}
+        error={
+          form.formState.errors.avatarText?.message || form.formState.errors.avatarUrl?.message
+        }
       >
         <div className="flex items-center gap-3">
           <div className="relative group size-10 shrink-0">
             {avatarUrl ? (
               <>
-                <img src={avatarUrl} alt="Avatar" className="size-full rounded-md object-cover border" />
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="size-full rounded-md object-cover border"
+                />
                 <button
                   type="button"
                   onClick={handleRemoveImage}
@@ -165,8 +177,10 @@ export function CommonAccountFields({
             {ACCOUNT_COLORS.map((color) => (
               <SelectItem key={color} value={color}>
                 <div className="flex items-center gap-2">
-                  <div className={cn("size-4 rounded-sm", color)} />
-                  <span className="text-xs uppercase">{color.replace('bg-', '').replace('-500', '')}</span>
+                  <div className={cn('size-4 rounded-sm', color)} />
+                  <span className="text-xs uppercase">
+                    {color.replace('bg-', '').replace('-500', '')}
+                  </span>
                 </div>
               </SelectItem>
             ))}

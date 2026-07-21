@@ -26,7 +26,9 @@ export function getDisplayAttachmentName(attachment: Attachment, t: Translate): 
 }
 
 export function getDisplayAttachmentSize(attachment: Attachment, t: Translate): string {
-  return attachment.size === ATTACHMENT_METADATA_PENDING_SIZE ? t('common.loading') : attachment.size
+  return attachment.size === ATTACHMENT_METADATA_PENDING_SIZE
+    ? t('common.loading')
+    : attachment.size
 }
 
 export function getDisplayAttachmentType(attachment: Attachment, t: Translate): string {

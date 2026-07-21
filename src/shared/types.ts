@@ -77,6 +77,7 @@ export type MessageFilterTag = 'unread' | 'starred' | 'today' | 'yesterday' | 'l
 export type MessageListQuery = {
   accountId?: number
   folderId?: number
+  folderRole?: string
   filters?: MessageFilterTag[]
   keyword?: string
   search?: string
@@ -371,8 +372,6 @@ export type NotificationStatus = {
   desktopSupported: boolean
 }
 
-
-
 export type ShortcutBinding = {
   actionId: string
   keys: string
@@ -526,6 +525,58 @@ export type AppUpdateStatus = {
   updatedAt: string
 }
 
+export type ContactGroup = {
+  id: number
+  name: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type ContactEmail = {
+  id?: number
+  email: string
+  label?: string
+}
+
+export type ContactPhone = {
+  id?: number
+  phone: string
+  label?: string
+}
+
+export type Contact = {
+  id: number
+  name: string
+  avatarUrl?: string
+  notes?: string
+  emails: ContactEmail[]
+  phones: ContactPhone[]
+  groupIds: number[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type ContactInput = {
+  name: string
+  avatarUrl?: string
+  notes?: string
+  emails: ContactEmail[]
+  phones: ContactPhone[]
+  groupIds: number[]
+}
+
+export type ContactImportResult = {
+  importedCount: number
+  failedCount: number
+  error?: string
+  canceled?: boolean
+}
+
+export type ContactExportResult = {
+  success: boolean
+  canceled: boolean
+}
+
 export type OneMailApi = {
   accounts: {
     list: () => Promise<MailAccount[]>
@@ -594,6 +645,18 @@ export type OneMailApi = {
     exportSql: () => Promise<string | null>
     importSql: (operationId?: string) => Promise<BackupImportResult>
     onBackupImportProgress: (callback: (progress: BackupImportProgress) => void) => () => void
+  }
+  contacts: {
+    list: () => Promise<Contact[]>
+    get: (id: number) => Promise<Contact | null>
+    create: (input: ContactInput) => Promise<Contact>
+    update: (id: number, input: ContactInput) => Promise<Contact>
+    delete: (id: number) => Promise<boolean>
+    getGroups: () => Promise<ContactGroup[]>
+    createGroup: (name: string) => Promise<ContactGroup>
+    deleteGroup: (id: number) => Promise<boolean>
+    importContacts: (format: 'csv' | 'vcard') => Promise<ContactImportResult>
+    exportContacts: (format: 'csv' | 'vcard') => Promise<ContactExportResult>
   }
   updates: {
     check: () => Promise<AppUpdateCheckResult>

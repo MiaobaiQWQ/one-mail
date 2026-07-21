@@ -19,7 +19,10 @@ export type ComposeAttachment = {
 }
 
 type MaterializedAttachment = Required<
-  Pick<ComposeAttachment, 'filename' | 'mimeType' | 'contentId' | 'filePath' | 'content' | 'sizeBytes'>
+  Pick<
+    ComposeAttachment,
+    'filename' | 'mimeType' | 'contentId' | 'filePath' | 'content' | 'sizeBytes'
+  >
 >
 
 export type PlainTextMessageInput = {

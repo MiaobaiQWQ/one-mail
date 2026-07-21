@@ -40,9 +40,7 @@ const SHORTCUT_CATEGORIES = [
   {
     id: 'translate',
     label: 'settings.shortcuts.category.translate',
-    actions: [
-      { id: 'translate-selection', label: '翻译选中内容' }
-    ]
+    actions: [{ id: 'translate-selection', label: '翻译选中内容' }]
   }
 ]
 
@@ -126,7 +124,9 @@ export function ShortcutsSettings(): React.JSX.Element {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setValue('shortcuts', DEFAULT_SHORTCUTS, { shouldValidate: true, shouldDirty: true })}
+          onClick={() =>
+            setValue('shortcuts', DEFAULT_SHORTCUTS, { shouldValidate: true, shouldDirty: true })
+          }
         >
           <RotateCcw className="mr-2 h-4 w-4" />
           {t('settings.shortcuts.reset')}
@@ -153,7 +153,9 @@ export function ShortcutsSettings(): React.JSX.Element {
                       size="sm"
                       onClick={() => setRecordingId(isRecording ? null : action.id)}
                     >
-                      {isRecording ? t('settings.shortcuts.recording') : binding?.keys || t('settings.shortcuts.record')}
+                      {isRecording
+                        ? t('settings.shortcuts.recording')
+                        : binding?.keys || t('settings.shortcuts.record')}
                     </Button>
                   }
                 />

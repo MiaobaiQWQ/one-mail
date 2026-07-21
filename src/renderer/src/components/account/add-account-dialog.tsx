@@ -101,7 +101,7 @@ export function AddAccountForm({
         smtpAuthType: preset.smtpAuthType,
         smtpEnabled: preset.smtpEnabled,
         avatarText: values.avatarText?.trim() || undefined,
-        colorKey: values.colorKey === 'auto' ? undefined : (values.colorKey || undefined)
+        colorKey: values.colorKey === 'auto' ? undefined : values.colorKey || undefined
       })
       form.reset(defaultAccountFormValues)
       setKind(defaultAccountFormValues.kind)
@@ -145,7 +145,6 @@ export function AddAccountForm({
         </AccountFormField>
 
         <FieldGroup className="gap-2.5">{renderProviderForm(kind, form, t)}</FieldGroup>
-
       </div>
 
       <div className={footerClassName}>

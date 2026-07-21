@@ -403,11 +403,7 @@ function sanitizeImapResponse(value: string): string {
     .slice(0, 240)
 }
 
-function formatImapActionError(
-  action: string,
-  line: string,
-  input?: AccountCreateInput
-): string {
+function formatImapActionError(action: string, line: string, input?: AccountCreateInput): string {
   if (action === '登录认证' && input && isNetease163Input(input)) {
     return [
       '163 邮箱登录认证失败：网易拒绝了当前账号或授权码。',
@@ -469,11 +465,7 @@ function isAliyunInput(input: AccountCreateInput): boolean {
   const imapHost = input.imapHost.toLowerCase()
   const email = input.email?.toLowerCase() ?? ''
 
-  return (
-    providerKey === 'aliyun' ||
-    imapHost === 'imap.aliyun.com' ||
-    email.endsWith('@aliyun.com')
-  )
+  return providerKey === 'aliyun' || imapHost === 'imap.aliyun.com' || email.endsWith('@aliyun.com')
 }
 
 function isAliyunEnterpriseInput(input: AccountCreateInput): boolean {

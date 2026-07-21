@@ -86,7 +86,8 @@ export function MailFilterTags({
           className={cn(
             'inline-flex shrink-0 items-center justify-center gap-1 border border-border bg-background text-foreground whitespace-nowrap outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
             filterBadgeClassName,
-            dateFilter && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90'
+            dateFilter &&
+              'border-transparent bg-primary text-primary-foreground hover:bg-primary/90'
           )}
           aria-label={t('mail.filter.date')}
         >

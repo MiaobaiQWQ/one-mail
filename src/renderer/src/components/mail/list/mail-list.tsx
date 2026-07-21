@@ -2,7 +2,10 @@ import * as React from 'react'
 import { CheckCheck, Paperclip, Search, Star, X } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { formatAbsoluteTime, formatRelativeTime } from '@renderer/components/mail/shared/date-format'
+import {
+  formatAbsoluteTime,
+  formatRelativeTime
+} from '@renderer/components/mail/shared/date-format'
 import { EllipsisTooltip } from '@renderer/components/mail/shared/ellipsis-tooltip'
 import {
   getDisplayPreview,
@@ -91,7 +94,7 @@ export function MailList({
 
   const accountMap = React.useMemo(() => {
     if (account.id !== 'all' || !allAccounts.length) return undefined
-    
+
     const map = new Map<number, Account>()
     for (const acc of allAccounts) {
       if (acc.accountId) {
@@ -282,11 +285,13 @@ function MessageListItem({
   const absoluteTime = formatAbsoluteTime(message.receivedAt)
   const displaySubject = getDisplaySubject(message, t)
   const displaySender = getDisplaySender(message, t)
-  
+
   // Calculate receiver account info
   const receiverAccount = accountMap?.get(message.accountId)
-  const receiverLabel = receiverAccount ? (receiverAccount.name || receiverAccount.address) : undefined
-  
+  const receiverLabel = receiverAccount
+    ? receiverAccount.name || receiverAccount.address
+    : undefined
+
   const fromLabel =
     message.fromAddress && message.fromAddress !== displaySender
       ? `${displaySender} · ${message.fromAddress}`
@@ -367,10 +372,10 @@ function MessageListItem({
       <span className="min-w-0 select-text">
         <span className="flex min-w-0 items-center gap-1.5 text-xs">
           {receiverLabel ? (
-            <span 
+            <span
               className={cn(
-                "shrink-0 rounded-sm px-1 py-0.5 text-[10px] font-medium leading-none text-primary-foreground",
-                receiverAccount?.accent ? receiverAccount.accent : "bg-primary"
+                'shrink-0 rounded-sm px-1 py-0.5 text-[10px] font-medium leading-none text-primary-foreground',
+                receiverAccount?.accent ? receiverAccount.accent : 'bg-primary'
               )}
               title={t('mail.list.receivedBy', { account: receiverLabel })}
             >

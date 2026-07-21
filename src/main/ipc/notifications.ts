@@ -5,4 +5,3 @@ export function registerNotificationIpc(): void {
   ipcMain.handle('notifications/status', () => getNotificationStatus())
   ipcMain.handle('notifications/test', () => testNotification())
 }
-

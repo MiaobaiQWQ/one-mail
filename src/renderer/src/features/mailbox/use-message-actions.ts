@@ -37,12 +37,66 @@ export function useMessageActions({
   const [deleteRequest, setDeleteRequest] = React.useState<DeleteRequest | null>(null)
   const [deletingMessageIds, setDeletingMessageIds] = React.useState<Set<string>>(() => new Set())
 
-  const requestDeleteMessages = React.useCallback((messages: Message[]): void => {
-    if (messages.length === 0) return
-    setDeleteRequest({
-      messages
-    })
-  }, [])
+  const executeDelete = React.useCallback(
+    async (messages: Message[], permanent: boolean): Promise<void> => {
+      if (messages.length === 0 || deletingMessageIds.size > 0) return
+
+      const messageIds = messages.map((message) => message.id)
+      setDeletingMessageIds(new Set(messageIds))
+      setError(null)
+
+      try {
+        if (messages.length === 1) {
+          const result = await deleteMessage({
+            messageId: messages[0].messageId,
+            permanent
+          })
+          handleSingleDeleteResult(result, t)
+          if (result.deleted || result.hidden) {
+            removeMessages(messageIds)
+            clearSelection()
+            setDeleteRequest(null)
+          }
+          return
+        }
+
+        const result = await bulkDeleteMessages({
+          messageIds: messages.map((message) => message.messageId),
+          permanent
+        })
+        handleBulkDeleteResult(result, t)
+        if (result.succeededMessageIds.length > 0) {
+          const succeededIds = new Set(result.succeededMessageIds.map(String))
+          removeMessages(messageIds.filter((messageId) => succeededIds.has(messageId)))
+        }
+        if (result.failedCount === 0) {
+          clearSelection()
+          setDeleteRequest(null)
+        }
+      } catch (deleteError) {
+        const message = getErrorMessage(deleteError, t('mail.delete.error'))
+        setError(message)
+        toast.error(message)
+      } finally {
+        setDeletingMessageIds(new Set())
+      }
+    },
+    [clearSelection, deletingMessageIds.size, removeMessages, setError, t]
+  )
+
+  const requestDeleteMessages = React.useCallback(
+    (messages: Message[]): void => {
+      if (messages.length === 0) return
+      
+      const isPermanent = messages.some((m) => m.folderRole === 'trash')
+      if (isPermanent) {
+        setDeleteRequest({ messages })
+      } else {
+        void executeDelete(messages, false)
+      }
+    },
+    [executeDelete]
+  )
 
   const cancelDelete = React.useCallback((): void => {
     if (deletingMessageIds.size > 0) return
@@ -50,48 +104,9 @@ export function useMessageActions({
   }, [deletingMessageIds.size])
 
   const confirmDelete = React.useCallback(async (): Promise<void> => {
-    if (!deleteRequest || deletingMessageIds.size > 0) return
-
-    const messageIds = deleteRequest.messages.map((message) => message.id)
-    setDeletingMessageIds(new Set(messageIds))
-    setError(null)
-
-    try {
-      if (deleteRequest.messages.length === 1) {
-        const result = await deleteMessage({
-          messageId: deleteRequest.messages[0].messageId,
-          permanent: true
-        })
-        handleSingleDeleteResult(result, t)
-        if (result.deleted || result.hidden) {
-          removeMessages(messageIds)
-          clearSelection()
-          setDeleteRequest(null)
-        }
-        return
-      }
-
-      const result = await bulkDeleteMessages({
-        messageIds: deleteRequest.messages.map((message) => message.messageId),
-        permanent: true
-      })
-      handleBulkDeleteResult(result, t)
-      if (result.succeededMessageIds.length > 0) {
-        const succeededIds = new Set(result.succeededMessageIds.map(String))
-        removeMessages(messageIds.filter((messageId) => succeededIds.has(messageId)))
-      }
-      if (result.failedCount === 0) {
-        clearSelection()
-        setDeleteRequest(null)
-      }
-    } catch (deleteError) {
-      const message = getErrorMessage(deleteError, t('mail.delete.error'))
-      setError(message)
-      toast.error(message)
-    } finally {
-      setDeletingMessageIds(new Set())
-    }
-  }, [clearSelection, deleteRequest, deletingMessageIds.size, removeMessages, setError, t])
+    if (!deleteRequest) return
+    await executeDelete(deleteRequest.messages, true)
+  }, [deleteRequest, executeDelete])
 
   return {
     deleteRequest,

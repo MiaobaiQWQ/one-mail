@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import type { AppSettings, SystemInfo, AppUpdateStatus, SettingsUpdateInput } from '../../../shared/types'
+import type {
+  AppSettings,
+  SystemInfo,
+  AppUpdateStatus,
+  SettingsUpdateInput
+} from '../../../shared/types'
 import * as api from '../lib/api'
 
 export interface SettingsStore {
@@ -19,10 +24,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   actions: {
     loadSettings: async () => {
       try {
-        const [settings, systemInfo] = await Promise.all([
-          api.loadSettings(),
-          api.getSystemInfo()
-        ])
+        const [settings, systemInfo] = await Promise.all([api.loadSettings(), api.getSystemInfo()])
         set({ settings, systemInfo })
       } catch (err) {
         console.error('Failed to load settings:', err)

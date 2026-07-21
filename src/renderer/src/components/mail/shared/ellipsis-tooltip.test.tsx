@@ -19,7 +19,13 @@ function rect(width: number): DOMRect {
   } as DOMRect
 }
 
-function mockMeasuredText({ renderedWidth, scrollWidth }: { renderedWidth: number; scrollWidth: number }): void {
+function mockMeasuredText({
+  renderedWidth,
+  scrollWidth
+}: {
+  renderedWidth: number
+  scrollWidth: number
+}): void {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
     this: HTMLElement
   ) {

@@ -36,7 +36,13 @@ export function MailListSelectionToolbar({
         checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
         disabled={disabled}
         aria-label={t('mail.selection.selectVisible')}
-        onCheckedChange={onSelectAllVisible}
+        onCheckedChange={(checked) => {
+          if (checked) {
+            onSelectAllVisible()
+          } else {
+            onClearSelection()
+          }
+        }}
       />
       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
         {t('mail.selection.selectedCount', { count: selectedCount })}
@@ -52,7 +58,7 @@ export function MailListSelectionToolbar({
       </Button>
       <Button size="sm" variant="outline" disabled={disabled} onClick={onDeleteSelected}>
         <Trash2 data-icon="inline-start" />
-        {t('mail.selection.deletePermanently')}
+        {t('mail.selection.moveToTrash')}
       </Button>
       <Button
         size="icon-sm"

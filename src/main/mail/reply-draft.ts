@@ -1,5 +1,8 @@
 import { getAccount } from '../db/repositories/account.repository'
-import { getMessageComposeSource, type MessageComposeSource } from '../db/repositories/message.repository'
+import {
+  getMessageComposeSource,
+  type MessageComposeSource
+} from '../db/repositories/message.repository'
 import { loadMessageBodyFromImap } from './body-loader'
 import {
   buildReferencesHeader,
@@ -43,9 +46,7 @@ export async function createReplyDraft(
 
   const ownEmail = normalizeEmail(account.email)
   const to =
-    mode === 'reply'
-      ? replyRecipients(source, ownEmail)
-      : replyAllRecipients(source, ownEmail).to
+    mode === 'reply' ? replyRecipients(source, ownEmail) : replyAllRecipients(source, ownEmail).to
   const cc = mode === 'reply_all' ? replyAllRecipients(source, ownEmail).cc : []
   const parentMessageId = normalizeMessageId(source.rfc822MessageId)
 
@@ -64,7 +65,8 @@ export async function createReplyDraft(
 }
 
 function replyRecipients(source: MessageComposeSource, ownEmail: string): ComposeAddress[] {
-  const preferred = source.addresses.reply_to.length > 0 ? source.addresses.reply_to : fromAddress(source)
+  const preferred =
+    source.addresses.reply_to.length > 0 ? source.addresses.reply_to : fromAddress(source)
   return dedupeAddresses(preferred).filter((address) => normalizeEmail(address.email) !== ownEmail)
 }
 
@@ -101,7 +103,9 @@ function buildReplyBody(source: MessageComposeSource): string {
   const author = formatAddressLine(fromAddress(source)[0])
   const date = source.sentAt ?? source.receivedAt ?? ''
   const intro = [date, author].filter(Boolean).join(', ')
-  const quotedBody = quoteText(source.bodyText ?? source.bodyHtmlSanitized ?? source.rawHeaders ?? '')
+  const quotedBody = quoteText(
+    source.bodyText ?? source.bodyHtmlSanitized ?? source.rawHeaders ?? ''
+  )
 
   return `\n\nOn ${intro || 'the original message'} wrote:\n${quotedBody}`
 }

@@ -1,4 +1,10 @@
-import { getDatabase, toBoolean, toNumber, toOptionalString, type SqliteRow } from '../db/connection'
+import {
+  getDatabase,
+  toBoolean,
+  toNumber,
+  toOptionalString,
+  type SqliteRow
+} from '../db/connection'
 
 export type SpecialFolderRole = 'inbox' | 'junk' | 'sent' | 'drafts' | 'trash' | 'archive'
 
@@ -38,10 +44,30 @@ const ATTRIBUTE_ROLE_MAP: Record<string, SpecialFolderRole | 'all_mail'> = {
 
 const ROLE_NAMES: Record<SpecialFolderRole, string[]> = {
   inbox: ['inbox', '收件箱'],
-  junk: ['junk', 'spam', 'bulk mail', 'bulk', 'junk email', 'junk e-mail', '垃圾邮件', '垃圾邮件箱', '垃圾邮箱'],
+  junk: [
+    'junk',
+    'spam',
+    'bulk mail',
+    'bulk',
+    'junk email',
+    'junk e-mail',
+    '垃圾邮件',
+    '垃圾邮件箱',
+    '垃圾邮箱'
+  ],
   sent: ['sent', 'sent messages', 'sent mail', '已发送', '已发送邮件', '寄件备份', '寄件匣'],
   drafts: ['drafts', 'draft', '草稿', '草稿箱'],
-  trash: ['trash', 'deleted messages', 'deleted items', 'deleted', 'bin', '废纸篓', '已删除', '已删除邮件', '垃圾桶'],
+  trash: [
+    'trash',
+    'deleted messages',
+    'deleted items',
+    'deleted',
+    'bin',
+    '废纸篓',
+    '已删除',
+    '已删除邮件',
+    '垃圾桶'
+  ],
   archive: ['archive', 'archives', 'all mail', 'all', '归档', '所有邮件']
 }
 
@@ -68,13 +94,13 @@ export function isFolderRole(
   folder: Pick<SpecialFolder, 'path' | 'name' | 'attributes' | 'role'>,
   role: SpecialFolderRole
 ): boolean {
-  return folder.role === role || detectSpecialFolderRole(folder.path || folder.name, folder.attributes) === role
+  return (
+    folder.role === role ||
+    detectSpecialFolderRole(folder.path || folder.name, folder.attributes) === role
+  )
 }
 
-export function findFolderByRole(
-  accountId: number,
-  role: SpecialFolderRole
-): SpecialFolder | null {
+export function findFolderByRole(accountId: number, role: SpecialFolderRole): SpecialFolder | null {
   const rows = getDatabase()
     .prepare<FolderRow>(
       `
@@ -117,7 +143,10 @@ function matchesRoleName(normalizedPath: string, role: SpecialFolderRole): boole
 }
 
 function normalizeAttribute(value: string): string {
-  return value.replace(/^\\/, '').replace(/[\s_-]/g, '').toLowerCase()
+  return value
+    .replace(/^\\/, '')
+    .replace(/[\s_-]/g, '')
+    .toLowerCase()
 }
 
 function normalizeMailboxPath(path: string): string {

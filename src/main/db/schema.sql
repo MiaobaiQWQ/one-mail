@@ -339,3 +339,46 @@ CREATE TABLE IF NOT EXISTS onemail_app_settings (
   value_type TEXT NOT NULL DEFAULT 'string' CHECK (value_type IN ('string', 'number', 'boolean', 'json')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+
+CREATE TABLE IF NOT EXISTS onemail_contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  avatar_url TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS onemail_contact_emails (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contact_id INTEGER NOT NULL,
+  email TEXT NOT NULL,
+  label TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  FOREIGN KEY (contact_id) REFERENCES onemail_contacts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS onemail_contact_phones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contact_id INTEGER NOT NULL,
+  phone TEXT NOT NULL,
+  label TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  FOREIGN KEY (contact_id) REFERENCES onemail_contacts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS onemail_contact_groups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS onemail_contact_group_members (
+  contact_id INTEGER NOT NULL,
+  group_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  PRIMARY KEY (contact_id, group_id),
+  FOREIGN KEY (contact_id) REFERENCES onemail_contacts(id) ON DELETE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES onemail_contact_groups(id) ON DELETE CASCADE
+);

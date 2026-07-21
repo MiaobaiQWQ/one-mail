@@ -34,13 +34,7 @@ export function NotificationSettings(): React.JSX.Element {
               icon={Bell}
               title={t('settings.notifications.enabled')}
               description={t('settings.notifications.enabled')}
-              control={
-                <Switch
-                  size="sm"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              }
+              control={<Switch size="sm" checked={field.value} onCheckedChange={field.onChange} />}
             />
           )}
         />
@@ -73,4 +67,3 @@ export function NotificationSettings(): React.JSX.Element {
     </div>
   )
 }
-

@@ -1,7 +1,13 @@
 import * as React from 'react'
 import { zhCN } from './locales/zh-CN'
 import { enUS } from './locales/en-US'
-import type { AppLocale, I18nContextValue, TranslationKey, TranslationMap, TranslationValues } from './types'
+import type {
+  AppLocale,
+  I18nContextValue,
+  TranslationKey,
+  TranslationMap,
+  TranslationValues
+} from './types'
 
 export { supportedLocales } from './types'
 export type { AppLocale, TranslationKey, TranslationMap, TranslationValues }

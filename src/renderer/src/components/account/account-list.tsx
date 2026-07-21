@@ -7,7 +7,13 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Trash2
+  Trash2,
+  Inbox,
+  Send,
+  FileText,
+  Trash,
+  Ban,
+  Users
 } from 'lucide-react'
 
 import type { Account } from '@renderer/components/mail/shared/types'
@@ -28,21 +34,20 @@ import {
 } from '@renderer/components/ui/tooltip'
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
 import { cn } from '@renderer/lib/utils'
-import {
-  getProviderLogoMetadata,
-  normalizeProviderKey
-} from '../../../../shared/provider-metadata'
+import { getProviderLogoMetadata, normalizeProviderKey } from '../../../../shared/provider-metadata'
 import oneMailIcon from '../../assets/onemail-icon.png'
 import { getAccountWarning } from './account-warning'
 
 type AccountListProps = {
   accounts: Account[]
   selectedAccountId: string
+  selectedFolderId: string
   syncingAccountIds: Set<string>
   actionsDisabled: boolean
   composePending: boolean
   outboxPending: boolean
   onSelectAccount: (accountId: string) => void
+  onSelectFolder: (folderId: string) => void
   onCompose: () => void
   onOpenOutbox: () => void
   onRefreshAccount: (account: Account) => void
@@ -60,11 +65,13 @@ type AccountGroup = {
 export function AccountList({
   accounts,
   selectedAccountId,
+  selectedFolderId,
   syncingAccountIds,
   actionsDisabled,
   composePending,
   outboxPending,
   onSelectAccount,
+  onSelectFolder,
   onCompose,
   onOpenOutbox,
   onRefreshAccount,
@@ -91,6 +98,15 @@ export function AccountList({
       return next
     })
   }
+
+  const globalFolders = [
+    { id: 'folder_inbox', label: t('sidebar.inbox'), icon: Inbox },
+    { id: 'folder_drafts', label: t('sidebar.drafts'), icon: FileText },
+    { id: 'folder_sent', label: t('sidebar.sent'), icon: Send },
+    { id: 'folder_junk', label: t('sidebar.junk'), icon: Ban },
+    { id: 'folder_trash', label: t('sidebar.trash'), icon: Trash },
+    { id: 'contacts', label: t('sidebar.contacts'), icon: Users }
+  ]
 
   return (
     <aside className="flex h-full min-w-0 flex-col bg-card/60 text-xs text-foreground">
@@ -127,6 +143,33 @@ export function AccountList({
       <div className="min-h-0 flex-1 overflow-auto px-1.5 py-1.5">
         <TooltipProvider>
           <div className="flex flex-col gap-0.5">
+            {/* Global Folders */}
+            <div className="mb-2 flex flex-col gap-0.5">
+              {globalFolders.map((folder) => {
+                const Icon = folder.icon
+                const isSelected = selectedFolderId === folder.id
+                return (
+                  <button
+                    key={folder.id}
+                    type="button"
+                    onClick={() => onSelectFolder(folder.id)}
+                    className={cn(
+                      'group flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
+                      isSelected && 'bg-secondary text-secondary-foreground font-medium'
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+                    <span className="truncate">{folder.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="my-1 h-px bg-border" />
+            <div className="px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('sidebar.accounts')}
+            </div>
+
             {allAccount ? (
               <AccountRow
                 account={allAccount}
@@ -226,9 +269,7 @@ function AccountRow({
       >
         <ProviderLogo account={account} selected={selected} warning={Boolean(warning)} />
         <span className="flex min-w-0 flex-col items-start gap-0.5">
-          <span className="truncate font-medium">
-            {account.name || account.address}
-          </span>
+          <span className="truncate font-medium">{account.name || account.address}</span>
           {account.name && account.name !== account.address ? (
             <span className="truncate text-muted-foreground opacity-60 text-[10px]">
               {account.address}
@@ -358,10 +399,17 @@ function ProviderLogo({
     <span
       className={cn(
         'flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md text-muted-foreground [&_img]:size-4 [&_img]:object-contain [&_svg]:size-4',
-        isUnifiedInbox || showImageAvatar ? 'bg-transparent [&_img]:size-5 [&_img]:rounded-md [&_img]:object-cover' : 'bg-background',
+        isUnifiedInbox || showImageAvatar
+          ? 'bg-transparent [&_img]:size-5 [&_img]:rounded-md [&_img]:object-cover'
+          : 'bg-background',
         warning && 'text-warning-foreground',
         selected && 'text-foreground',
-        showColoredAvatar && !isUnifiedInbox && account.accent && account.accent !== 'bg-muted' && account.accent !== 'bg-muted-foreground' && cn(account.accent, "text-primary-foreground")
+        showColoredAvatar &&
+          !isUnifiedInbox &&
+          account.accent &&
+          account.accent !== 'bg-muted' &&
+          account.accent !== 'bg-muted-foreground' &&
+          cn(account.accent, 'text-primary-foreground')
       )}
     >
       {isUnifiedInbox ? (
@@ -382,7 +430,6 @@ function ProviderLogo({
     </span>
   )
 }
-
 
 function EmptyAccounts(): React.JSX.Element {
   const { t } = useI18n()

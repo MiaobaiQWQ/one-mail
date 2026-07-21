@@ -196,6 +196,11 @@ function buildMessageListQueryParts(query?: MessageListQuery): MessageListQueryP
     params.folderId = query.folderId
   }
 
+  if (query?.folderRole !== undefined) {
+    where.push('f.role = :folderRole')
+    params.folderRole = query.folderRole
+  }
+
   const filters = new Set(query?.filters ?? [])
   if (filters.has('unread')) where.push('m.is_read = 0')
   if (filters.has('starred')) where.push('m.is_starred = 1')

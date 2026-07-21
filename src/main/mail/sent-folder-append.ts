@@ -22,7 +22,8 @@ export async function appendMessageToSentFolder(
   if (!account) return { appended: false, warning: `Account not found: ${accountId}` }
 
   const sentFolder = findSentFolder(accountId)
-  if (!sentFolder) return { appended: false, warning: '未找到 Sent/已发送 文件夹，已跳过远端追加。' }
+  if (!sentFolder)
+    return { appended: false, warning: '未找到 Sent/已发送 文件夹，已跳过远端追加。' }
 
   let session: SimpleImapSession | undefined
 

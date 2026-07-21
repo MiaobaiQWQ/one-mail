@@ -25,7 +25,9 @@ export type MessageOperationInput = {
   errorMessage?: string
 }
 
-export type MessageOperationRecord = Required<Omit<MessageOperationInput, 'messageId' | 'outboxId' | 'remoteAction' | 'errorMessage'>> & {
+export type MessageOperationRecord = Required<
+  Omit<MessageOperationInput, 'messageId' | 'outboxId' | 'remoteAction' | 'errorMessage'>
+> & {
   operationId: number
   messageId?: number
   outboxId?: number

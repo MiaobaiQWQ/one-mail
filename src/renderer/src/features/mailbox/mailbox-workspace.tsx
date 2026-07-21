@@ -77,6 +77,7 @@ import { useMessageActions } from './use-message-actions'
 import { useMessageSelection } from './use-message-selection'
 import { useSyncFeedback } from './use-sync-feedback'
 import { useShortcuts } from '@renderer/hooks/use-shortcuts'
+import { ContactsWorkspace } from '../contacts/contacts-workspace'
 
 export type DialogKind = 'edit' | 'delete' | 'settings' | null
 
@@ -112,6 +113,7 @@ export function MailboxWorkspace(): React.JSX.Element {
   const [systemInfo, setSystemInfo] = React.useState<SystemInfo | null>(null)
   const [updateStatus, setUpdateStatus] = React.useState<AppUpdateStatus | null>(null)
   const [selectedAccountId, setSelectedAccountId] = React.useState('all')
+  const [selectedFolderId, setSelectedFolderId] = React.useState('folder_inbox')
   const [filters, setFilters] = React.useState<MailFilterTag[]>([])
   const [searchKeyword, setSearchKeyword] = React.useState('')
   const [dialogKind, setDialogKind] = React.useState<DialogKind>(null)
@@ -153,6 +155,7 @@ export function MailboxWorkspace(): React.JSX.Element {
     downloadMessageAttachment
   } = useMailboxMessages({
     selectedAccountId,
+    selectedFolderId,
     filters,
     searchKeyword,
     loading,
@@ -244,6 +247,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         ? loadMessages(
             toMessageQuery(
               currentAccountId,
+              selectedFolderId,
               filters,
               { limit: MESSAGE_LIST_PAGE_SIZE, offset: 0 },
               searchKeyword
@@ -258,7 +262,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         replaceMessages(nextMessages)
       }
     },
-    [filters, replaceMessages, searchKeyword, selectedAccountId]
+    [filters, replaceMessages, searchKeyword, selectedAccountId, selectedFolderId]
   )
 
   const reloadInitialData = React.useCallback(async () => {
@@ -391,7 +395,7 @@ export function MailboxWorkspace(): React.JSX.Element {
       void syncAccount(accountId, 'initial')
         .then(async (syncResult) => {
           await refreshAccounts()
-          await refreshMessages(String(accountId), filters, searchKeyword)
+          await refreshMessages(String(accountId), selectedFolderId, filters, searchKeyword)
           finishSyncing(accountKey, 'success', {
             label: accountEmail,
             startedAt,
@@ -438,7 +442,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         .then(async (nextAccounts) => {
           setAccounts(nextAccounts)
           setSelectedAccountId(nextSelectedAccountId)
-          await refreshMessages(nextSelectedAccountId, filters, searchKeyword, {
+          await refreshMessages(nextSelectedAccountId, selectedFolderId, filters, searchKeyword, {
             selectFirst: true
           })
         })
@@ -494,7 +498,7 @@ export function MailboxWorkspace(): React.JSX.Element {
       }
     }
     await refreshAccounts()
-    await refreshMessages(String(account.accountId), filters, searchKeyword)
+    await refreshMessages(String(account.accountId), selectedFolderId, filters, searchKeyword)
     setDialogKind(null)
     setDialogAccountId(null)
   }
@@ -516,7 +520,7 @@ export function MailboxWorkspace(): React.JSX.Element {
     ) {
       setSelectedAccountId(nextSelectedAccountId)
       if (nextSelectedAccountId) {
-        await refreshMessages(nextSelectedAccountId, filters, searchKeyword)
+        await refreshMessages(nextSelectedAccountId, selectedFolderId, filters, searchKeyword)
       } else {
         clearMessages()
       }
@@ -585,7 +589,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         return
       }
       await refreshAccounts()
-      await refreshMessages(selectedAccountId, filters, searchKeyword)
+      await refreshMessages(selectedAccountId, selectedFolderId, filters, searchKeyword)
       finishSyncing(account.id, 'success', {
         label: account.name,
         startedAt,
@@ -708,7 +712,7 @@ export function MailboxWorkspace(): React.JSX.Element {
       clearSelection()
 
       if (filters.includes('unread')) {
-        await refreshMessages(selectedAccountId, filters, searchKeyword)
+        await refreshMessages(selectedAccountId, selectedFolderId, filters, searchKeyword)
       }
 
       showMarkReadResult(result.updatedCount, result.failedCount)
@@ -724,11 +728,11 @@ export function MailboxWorkspace(): React.JSX.Element {
 
     try {
       const result = await markCurrentQueryRead(
-        toMessageQuery(selectedAccountId, filters, undefined, searchKeyword)
+        toMessageQuery(selectedAccountId, selectedFolderId, filters, undefined, searchKeyword)
       )
 
       if (filters.includes('unread')) {
-        await refreshMessages(selectedAccountId, filters, searchKeyword)
+        await refreshMessages(selectedAccountId, selectedFolderId, filters, searchKeyword)
       }
 
       showMarkReadResult(result.updatedCount, result.failedCount)
@@ -755,11 +759,25 @@ export function MailboxWorkspace(): React.JSX.Element {
     if (!accountId) return
     navigateToMailboxRoute()
     setSelectedAccountId(accountId)
-    void refreshMessages(accountId, filters, searchKeyword, { selectFirst: true }).catch(
-      (refreshError) => {
-        setError(getErrorMessage(refreshError, t('mailbox.refreshMailError')))
-      }
-    )
+    void refreshMessages(accountId, selectedFolderId, filters, searchKeyword, {
+      selectFirst: true
+    }).catch((refreshError) => {
+      setError(getErrorMessage(refreshError, t('mailbox.refreshMailError')))
+    })
+  }
+
+  function handleSelectFolder(folderId: string): void {
+    if (!folderId) return
+    if (folderId === 'contacts') {
+      setSelectedFolderId(folderId)
+      return
+    }
+    setSelectedFolderId(folderId)
+    void refreshMessages(selectedAccountId, folderId, filters, searchKeyword, {
+      selectFirst: true
+    }).catch((refreshError) => {
+      setError(getErrorMessage(refreshError, t('mailbox.refreshMailError')))
+    })
   }
 
   function handleSelectMessage(messageId: string): void {
@@ -775,16 +793,20 @@ export function MailboxWorkspace(): React.JSX.Element {
 
   function handleChangeFilters(nextFilters: MailFilterTag[]): void {
     setFilters(nextFilters)
-    void refreshMessages(selectedAccountId, nextFilters, searchKeyword).catch((refreshError) => {
-      setError(getErrorMessage(refreshError, t('mailbox.refreshMailError')))
-    })
+    void refreshMessages(selectedAccountId, selectedFolderId, nextFilters, searchKeyword).catch(
+      (refreshError) => {
+        setError(getErrorMessage(refreshError, t('mailbox.refreshMailError')))
+      }
+    )
   }
 
   function handleChangeSearchKeyword(nextSearchKeyword: string): void {
     setSearchKeyword(nextSearchKeyword)
-    void refreshMessages(selectedAccountId, filters, nextSearchKeyword).catch((refreshError) => {
-      setError(getErrorMessage(refreshError, t('mailbox.searchMailError')))
-    })
+    void refreshMessages(selectedAccountId, selectedFolderId, filters, nextSearchKeyword).catch(
+      (refreshError) => {
+        setError(getErrorMessage(refreshError, t('mailbox.searchMailError')))
+      }
+    )
   }
 
   useShortcuts({
@@ -800,14 +822,14 @@ export function MailboxWorkspace(): React.JSX.Element {
     },
     'next-message': () => {
       if (!selectedMessage) return
-      const currentIndex = messages.findIndex(m => m.id === selectedMessage.id)
+      const currentIndex = messages.findIndex((m) => m.id === selectedMessage.id)
       if (currentIndex >= 0 && currentIndex < messages.length - 1) {
         handleSelectMessage(messages[currentIndex + 1].id)
       }
     },
     'prev-message': () => {
       if (!selectedMessage) return
-      const currentIndex = messages.findIndex(m => m.id === selectedMessage.id)
+      const currentIndex = messages.findIndex((m) => m.id === selectedMessage.id)
       if (currentIndex > 0) {
         handleSelectMessage(messages[currentIndex - 1].id)
       }
@@ -836,7 +858,7 @@ export function MailboxWorkspace(): React.JSX.Element {
   return (
     <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-background text-foreground">
       {/* Background Image Layer */}
-      <div 
+      <div
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           backgroundImage: 'var(--bg-image)',
@@ -849,274 +871,329 @@ export function MailboxWorkspace(): React.JSX.Element {
       <div className="relative z-10 flex h-full w-full flex-col overflow-hidden">
         <div className="relative shrink-0">
           <TitleBar
-          platform={systemInfo?.platform}
-          onAddAccount={handleOpenAddAccountWindow}
-          onOpenSettings={() => {
-            setSettingsInitialSection('general')
+            platform={systemInfo?.platform}
+            onAddAccount={handleOpenAddAccountWindow}
+            onOpenSettings={() => {
+              setSettingsInitialSection('general')
+              setDialogKind('settings')
+            }}
+          />
+        </div>
+
+        {showNoAccounts && selectedFolderId !== 'contacts' ? (
+          <NoAccountsBody
+            importingSql={backupImportBusy}
+            actionsDisabled={backupImportBusy}
+            onAddAccount={handleOpenAddAccountWindow}
+            onImportBackup={handleImportBackup}
+          />
+        ) : selectedFolderId === 'contacts' ? (
+          <ResizablePanelGroup
+            id="onemail-main-layout"
+            orientation="horizontal"
+            defaultLayout={mainLayout.defaultLayout}
+            onLayoutChanged={mainLayout.onLayoutChanged}
+            className="min-h-0 flex-1 overflow-hidden"
+          >
+            <ResizablePanel
+              id="accounts"
+              defaultSize="292px"
+              minSize="220px"
+              groupResizeBehavior="preserve-pixel-size"
+            >
+              <AccountList
+                accounts={accounts}
+                selectedAccountId={selectedAccountId}
+                selectedFolderId={selectedFolderId}
+                syncingAccountIds={syncingAccountIds}
+                actionsDisabled={!hasAccounts}
+                composePending={composerPending}
+                outboxPending={outboxPending}
+                onSelectAccount={handleSelectAccount}
+                onSelectFolder={handleSelectFolder}
+                onCompose={() => {
+                  void openComposer('new')
+                }}
+                onOpenOutbox={() => setOutboxOpen(true)}
+                onRefreshAccount={(account) => {
+                  void handleRefreshAccount(account)
+                }}
+                onEditAccount={(account) => {
+                  setDialogAccountId(account.id)
+                  setDialogKind('edit')
+                }}
+                onDeleteAccount={(account) => {
+                  setDialogAccountId(account.id)
+                  setDialogKind('delete')
+                }}
+                onResolveAccountWarning={(account) => {
+                  setWarningAccountId(account.id)
+                }}
+              />
+            </ResizablePanel>
+
+            <ResizableHandle />
+
+            <ResizablePanel id="contacts-main" minSize="400px">
+              <ContactsWorkspace />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <ResizablePanelGroup
+            id="onemail-main-layout"
+            orientation="horizontal"
+            defaultLayout={mainLayout.defaultLayout}
+            onLayoutChanged={mainLayout.onLayoutChanged}
+            className="min-h-0 flex-1 overflow-hidden"
+          >
+            <ResizablePanel
+              id="accounts"
+              defaultSize="292px"
+              minSize="220px"
+              groupResizeBehavior="preserve-pixel-size"
+            >
+              <AccountList
+                accounts={accounts}
+                selectedAccountId={selectedAccountId}
+                selectedFolderId={selectedFolderId}
+                syncingAccountIds={syncingAccountIds}
+                actionsDisabled={!hasAccounts}
+                composePending={composerPending}
+                outboxPending={outboxPending}
+                onSelectAccount={handleSelectAccount}
+                onSelectFolder={handleSelectFolder}
+                onCompose={() => {
+                  void openComposer('new')
+                }}
+                onOpenOutbox={() => setOutboxOpen(true)}
+                onRefreshAccount={(account) => {
+                  void handleRefreshAccount(account)
+                }}
+                onEditAccount={(account) => {
+                  setDialogAccountId(account.id)
+                  setDialogKind('edit')
+                }}
+                onDeleteAccount={(account) => {
+                  setDialogAccountId(account.id)
+                  setDialogKind('delete')
+                }}
+                onResolveAccountWarning={(account) => {
+                  setWarningAccountId(account.id)
+                }}
+              />
+            </ResizablePanel>
+
+            <ResizableHandle />
+
+            <ResizablePanel
+              id="messages"
+              defaultSize="420px"
+              minSize="320px"
+              groupResizeBehavior="preserve-pixel-size"
+            >
+              <MailList
+                account={selectedAccount}
+                allAccounts={accounts}
+                messages={messages}
+                selectedMessageId={selectedMessageId}
+                filters={filters}
+                searchKeyword={searchKeyword}
+                loading={loading}
+                loadingMore={messagePage.loadingMore}
+                hasMore={messagePage.hasMore}
+                error={error}
+                onSelectMessage={handleSelectMessage}
+                onChangeFilters={handleChangeFilters}
+                onChangeSearchKeyword={handleChangeSearchKeyword}
+                onLoadMore={loadMoreMessages}
+                onMarkAllRead={() => {
+                  void handleMarkAllRead()
+                }}
+                selectedMessageIds={selectedMessageIds}
+                allVisibleSelected={allVisibleSelected}
+                someVisibleSelected={someVisibleSelected}
+                selectionDisabled={deleting || markingRead}
+                onToggleMessageSelection={toggleMessageSelection}
+                onSelectAllVisible={selectAllVisible}
+                onClearSelection={clearSelection}
+                onMarkSelectedRead={() => {
+                  void handleMarkSelectedRead()
+                }}
+                onDeleteSelected={() => requestDeleteMessages(selectedMessages)}
+              />
+            </ResizablePanel>
+
+            <ResizableHandle />
+
+            <ResizablePanel id="reader" minSize="420px">
+              <article className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+                {selectedMessage ? (
+                  <MailReader
+                    message={selectedMessage}
+                    recipientAddress={selectedMessageAccount?.address ?? selectedAccount.address}
+                    loading={
+                      !selectedMessage.detailLoaded || loadingMessageId === selectedMessage.id
+                    }
+                    loadingBody={loadingBodyMessageId === selectedMessage.id}
+                    privacyMode={settings?.privacyMode ?? 'strict'}
+                    downloadingAttachmentIds={downloadingAttachmentIds}
+                    actionPending={composerPending}
+                    deleting={deletingMessageIds.has(selectedMessage.id)}
+                    onLoadBody={() => loadMessageBody(selectedMessage)}
+                    onDownloadAttachment={(attachment) => {
+                      if (attachment.id !== undefined) {
+                        downloadMessageAttachment(selectedMessage, attachment.id)
+                      }
+                    }}
+                    onReply={() => {
+                      void openComposer('reply', selectedMessage)
+                    }}
+                    onForward={() => {
+                      void openComposer('forward', selectedMessage)
+                    }}
+                    onDelete={() => requestDeleteMessages([selectedMessage])}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center p-8 text-xs text-muted-foreground">
+                    {t('mailbox.selectPreview')}
+                  </div>
+                )}
+              </article>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
+
+        <StatusBar
+          systemInfo={systemInfo}
+          settings={settings}
+          accountCount={realAccounts.length}
+          messageCount={selectedAccount.messageCount ?? messages.length}
+          syncNotice={syncNotice}
+          updateStatus={updateStatus}
+          onRevealDatabase={() => {
+            void revealDatabaseInFileManager()
+          }}
+          onOpenVersion={() => {
+            if (hasAvailableUpdate(updateStatus)) {
+              void openExternalUrl(ONEMAIL_HOMEPAGE_URL)
+              return
+            }
+            setSettingsInitialSection('about')
             setDialogKind('settings')
           }}
+          onInstallUpdate={() => {
+            void installAppUpdate()
+          }}
         />
-      </div>
 
-      {showNoAccounts ? (
-        <NoAccountsBody
-          importingSql={backupImportBusy}
-          actionsDisabled={backupImportBusy}
-          onAddAccount={handleOpenAddAccountWindow}
-          onImportBackup={handleImportBackup}
-        />
-      ) : (
-        <ResizablePanelGroup
-          id="onemail-main-layout"
-          orientation="horizontal"
-          defaultLayout={mainLayout.defaultLayout}
-          onLayoutChanged={mainLayout.onLayoutChanged}
-          className="min-h-0 flex-1 overflow-hidden"
-        >
-          <ResizablePanel
-            id="accounts"
-            defaultSize="292px"
-            minSize="220px"
-            groupResizeBehavior="preserve-pixel-size"
-          >
-            <AccountList
-              accounts={accounts}
-              selectedAccountId={selectedAccountId}
-              syncingAccountIds={syncingAccountIds}
-              actionsDisabled={!hasAccounts}
-              composePending={composerPending}
-              outboxPending={outboxPending}
-              onSelectAccount={handleSelectAccount}
-              onCompose={() => {
-                void openComposer('new')
-              }}
-              onOpenOutbox={() => setOutboxOpen(true)}
-              onRefreshAccount={(account) => {
-                void handleRefreshAccount(account)
-              }}
-              onEditAccount={(account) => {
-                setDialogAccountId(account.id)
-                setDialogKind('edit')
-              }}
-              onDeleteAccount={(account) => {
-                setDialogAccountId(account.id)
-                setDialogKind('delete')
-              }}
-              onResolveAccountWarning={(account) => {
-                setWarningAccountId(account.id)
-              }}
-            />
-          </ResizablePanel>
-
-          <ResizableHandle />
-
-          <ResizablePanel
-            id="messages"
-            defaultSize="420px"
-            minSize="320px"
-            groupResizeBehavior="preserve-pixel-size"
-          >
-            <MailList
-              account={selectedAccount}
-              allAccounts={accounts}
-              messages={messages}
-              selectedMessageId={selectedMessageId}
-              filters={filters}
-              searchKeyword={searchKeyword}
-              loading={loading}
-              loadingMore={messagePage.loadingMore}
-              hasMore={messagePage.hasMore}
-              error={error}
-              onSelectMessage={handleSelectMessage}
-              onChangeFilters={handleChangeFilters}
-              onChangeSearchKeyword={handleChangeSearchKeyword}
-              onLoadMore={loadMoreMessages}
-              onMarkAllRead={() => {
-                void handleMarkAllRead()
-              }}
-              selectedMessageIds={selectedMessageIds}
-              allVisibleSelected={allVisibleSelected}
-              someVisibleSelected={someVisibleSelected}
-              selectionDisabled={deleting || markingRead}
-              onToggleMessageSelection={toggleMessageSelection}
-              onSelectAllVisible={selectAllVisible}
-              onClearSelection={clearSelection}
-              onMarkSelectedRead={() => {
-                void handleMarkSelectedRead()
-              }}
-              onDeleteSelected={() => requestDeleteMessages(selectedMessages)}
-            />
-          </ResizablePanel>
-
-          <ResizableHandle />
-
-          <ResizablePanel id="reader" minSize="420px">
-            <article className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-              {selectedMessage ? (
-                <MailReader
-                  message={selectedMessage}
-                  recipientAddress={selectedMessageAccount?.address ?? selectedAccount.address}
-                  loading={!selectedMessage.detailLoaded || loadingMessageId === selectedMessage.id}
-                  loadingBody={loadingBodyMessageId === selectedMessage.id}
-                  privacyMode={settings?.privacyMode ?? 'strict'}
-                  downloadingAttachmentIds={downloadingAttachmentIds}
-                  actionPending={composerPending}
-                  deleting={deletingMessageIds.has(selectedMessage.id)}
-                  onLoadBody={() => loadMessageBody(selectedMessage)}
-                  onDownloadAttachment={(attachment) => {
-                    if (attachment.id !== undefined) {
-                      downloadMessageAttachment(selectedMessage, attachment.id)
-                    }
-                  }}
-                  onReply={() => {
-                    void openComposer('reply', selectedMessage)
-                  }}
-                  onForward={() => {
-                    void openComposer('forward', selectedMessage)
-                  }}
-                  onDelete={() => requestDeleteMessages([selectedMessage])}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center p-8 text-xs text-muted-foreground">
-                  {t('mailbox.selectPreview')}
-                </div>
-              )}
-            </article>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      )}
-
-      <StatusBar
-        systemInfo={systemInfo}
-        settings={settings}
-        accountCount={realAccounts.length}
-        messageCount={selectedAccount.messageCount ?? messages.length}
-        syncNotice={syncNotice}
-        updateStatus={updateStatus}
-        onRevealDatabase={() => {
-          void revealDatabaseInFileManager()
-        }}
-        onOpenVersion={() => {
-          if (hasAvailableUpdate(updateStatus)) {
-            void openExternalUrl(ONEMAIL_HOMEPAGE_URL)
-            return
-          }
-          setSettingsInitialSection('about')
-          setDialogKind('settings')
-        }}
-        onInstallUpdate={() => {
-          void installAppUpdate()
-        }}
-      />
-
-      <EditAccountDialog
-        account={dialogAccount ?? selectedAccount}
-        open={dialogKind === 'edit'}
-        onOpenChange={(open) => {
-          setDialogKind(open ? 'edit' : null)
-          if (!open) setDialogAccountId(null)
-        }}
-        onSubmit={handleUpdateAccount}
-      />
-      <RemoveAccountDialog
-        account={dialogAccount ?? selectedAccount}
-        open={dialogKind === 'delete'}
-        onOpenChange={(open) => {
-          setDialogKind(open ? 'delete' : null)
-          if (!open) setDialogAccountId(null)
-        }}
-        onConfirm={handleRemoveAccount}
-      />
-      {warningAccount ? (
-        <AccountWarningDialog
-          account={warningAccount}
-          open={Boolean(warningAccountId)}
-          syncing={syncingAccountIds.has(warningAccount.id)}
+        <EditAccountDialog
+          account={dialogAccount ?? selectedAccount}
+          open={dialogKind === 'edit'}
           onOpenChange={(open) => {
-            if (!open) setWarningAccountId(null)
+            setDialogKind(open ? 'edit' : null)
+            if (!open) setDialogAccountId(null)
           }}
-          onEdit={(account) => {
-            setDialogAccountId(account.id)
-            setDialogKind('edit')
-          }}
-          onRetry={(account) => {
-            void handleRefreshAccount(account)
-          }}
-          onDelete={(account) => {
-            setDialogAccountId(account.id)
-            setDialogKind('delete')
-          }}
-          onReauthorize={handleReauthorizeAccount}
+          onSubmit={handleUpdateAccount}
         />
-      ) : null}
-      <SettingsDialog
-        open={dialogKind === 'settings'}
-        settings={settings}
-        systemInfo={systemInfo}
-        updateStatus={updateStatus}
-        initialSection={settingsInitialSection}
-        onOpenChange={(open) => setDialogKind(open ? 'settings' : null)}
-        onSubmit={handleUpdateSettings}
-        onImported={reloadInitialData}
-      />
-      <BackupImportDialog
-        open={backupImportDialogOpen}
-        defaultSource={backupImportSource}
-        onOpenChange={setBackupImportDialogOpen}
-        onBusyChange={setBackupImportBusy}
-        onImported={handleBackupImported}
-      />
-      <OutlookImapHelpDialog
-        accountLabel={outlookImapHelpAccount?.name}
-        open={Boolean(outlookImapHelpAccount)}
-        onOpenChange={(open) => {
-          if (!open) setOutlookImapHelpAccount(null)
-        }}
-      />
-      <MailComposer
-        open={composerOpen}
-        accounts={realAccounts}
-        draft={composerDraft}
-        pending={composerPending}
-        onOpenChange={(open) => {
-          if (!open) closeComposer()
-        }}
-        onSend={sendComposerDraft}
-        onSaveDraft={handleSaveComposerDraft}
-        onDiscardDraft={handleDiscardComposerDraft}
-      />
-      <OutboxPanel
-        open={outboxOpen}
-        pending={outboxPending}
-        outboxMessages={outboxMessages}
-        onOpenChange={setOutboxOpen}
-        onRefresh={() => {
-          void refreshOutbox().catch((refreshError) => {
-            setError(getErrorMessage(refreshError, t('mailbox.loadOutboxError')))
-          })
-        }}
-        onOpenDraft={(message) => {
-          setOutboxOpen(false)
-          openOutboxDraft(message)
-        }}
-        onRetry={(message) => {
-          void handleRetryOutbox(message)
-        }}
-        onDelete={(message) => {
-          void handleDeleteOutbox(message)
-        }}
-      />
-      <DeleteMessageDialog
-        open={Boolean(deleteRequest)}
-        messages={deleteRequest?.messages ?? []}
-        pending={deleting}
-        onOpenChange={(open) => {
-          if (!open) cancelDelete()
-        }}
-        onConfirm={() => {
-          void confirmDelete()
-        }}
-      />
+        <RemoveAccountDialog
+          account={dialogAccount ?? selectedAccount}
+          open={dialogKind === 'delete'}
+          onOpenChange={(open) => {
+            setDialogKind(open ? 'delete' : null)
+            if (!open) setDialogAccountId(null)
+          }}
+          onConfirm={handleRemoveAccount}
+        />
+        {warningAccount ? (
+          <AccountWarningDialog
+            account={warningAccount}
+            open={Boolean(warningAccountId)}
+            syncing={syncingAccountIds.has(warningAccount.id)}
+            onOpenChange={(open) => {
+              if (!open) setWarningAccountId(null)
+            }}
+            onEdit={(account) => {
+              setDialogAccountId(account.id)
+              setDialogKind('edit')
+            }}
+            onRetry={(account) => {
+              void handleRefreshAccount(account)
+            }}
+            onDelete={(account) => {
+              setDialogAccountId(account.id)
+              setDialogKind('delete')
+            }}
+            onReauthorize={handleReauthorizeAccount}
+          />
+        ) : null}
+        <SettingsDialog
+          open={dialogKind === 'settings'}
+          settings={settings}
+          systemInfo={systemInfo}
+          updateStatus={updateStatus}
+          initialSection={settingsInitialSection}
+          onOpenChange={(open) => setDialogKind(open ? 'settings' : null)}
+          onSubmit={handleUpdateSettings}
+          onImported={reloadInitialData}
+        />
+        <BackupImportDialog
+          open={backupImportDialogOpen}
+          defaultSource={backupImportSource}
+          onOpenChange={setBackupImportDialogOpen}
+          onBusyChange={setBackupImportBusy}
+          onImported={handleBackupImported}
+        />
+        <OutlookImapHelpDialog
+          accountLabel={outlookImapHelpAccount?.name}
+          open={Boolean(outlookImapHelpAccount)}
+          onOpenChange={(open) => {
+            if (!open) setOutlookImapHelpAccount(null)
+          }}
+        />
+        <MailComposer
+          open={composerOpen}
+          accounts={realAccounts}
+          draft={composerDraft}
+          pending={composerPending}
+          onOpenChange={(open) => {
+            if (!open) closeComposer()
+          }}
+          onSend={sendComposerDraft}
+          onSaveDraft={handleSaveComposerDraft}
+          onDiscardDraft={handleDiscardComposerDraft}
+        />
+        <OutboxPanel
+          open={outboxOpen}
+          pending={outboxPending}
+          outboxMessages={outboxMessages}
+          onOpenChange={setOutboxOpen}
+          onRefresh={() => {
+            void refreshOutbox().catch((refreshError) => {
+              setError(getErrorMessage(refreshError, t('mailbox.loadOutboxError')))
+            })
+          }}
+          onOpenDraft={(message) => {
+            setOutboxOpen(false)
+            openOutboxDraft(message)
+          }}
+          onRetry={(message) => {
+            void handleRetryOutbox(message)
+          }}
+          onDelete={(message) => {
+            void handleDeleteOutbox(message)
+          }}
+        />
+        <DeleteMessageDialog
+          open={Boolean(deleteRequest)}
+          messages={deleteRequest?.messages ?? []}
+          pending={deleting}
+          onOpenChange={(open) => {
+            if (!open) cancelDelete()
+          }}
+          onConfirm={() => {
+            void confirmDelete()
+          }}
+        />
       </div>
     </main>
   )

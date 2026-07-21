@@ -26,12 +26,15 @@ export function registerSettingsIpc(): void {
     refreshMailboxWatchers()
     return settings
   })
-  ipcMain.handle('settings/detectShortcutConflict', (_event, keyString: string, actionId: string) => {
-    const settings = getSettings()
-    const shortcuts = settings.shortcuts || []
-    const conflict = shortcuts.find(s => s.keys === keyString && s.actionId !== actionId)
-    return conflict ? conflict.actionId : null
-  })
+  ipcMain.handle(
+    'settings/detectShortcutConflict',
+    (_event, keyString: string, actionId: string) => {
+      const settings = getSettings()
+      const shortcuts = settings.shortcuts || []
+      const conflict = shortcuts.find((s) => s.keys === keyString && s.actionId !== actionId)
+      return conflict ? conflict.actionId : null
+    }
+  )
   ipcMain.handle('settings/getBackupSync', () => getBackupSyncSettings())
   ipcMain.handle('settings/updateBackupSync', (_event, input: BackupSyncSettings) =>
     updateBackupSyncSettings(input)

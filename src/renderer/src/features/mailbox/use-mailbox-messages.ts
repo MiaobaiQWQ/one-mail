@@ -36,6 +36,7 @@ const MESSAGE_OPEN_SIDE_EFFECT_DELAY_MS = 80
 
 type UseMailboxMessagesInput = {
   selectedAccountId: string
+  selectedFolderId: string
   filters: MailFilterTag[]
   searchKeyword: string
   loading: boolean
@@ -45,6 +46,7 @@ type UseMailboxMessagesInput = {
 
 export function useMailboxMessages({
   selectedAccountId,
+  selectedFolderId,
   filters,
   searchKeyword,
   loading,
@@ -64,6 +66,7 @@ export function useMailboxMessages({
   removeMessages: (messageIds: string[]) => void
   refreshMessages: (
     accountId: string,
+    folderId: string,
     nextFilters: MailFilterTag[],
     nextSearchKeyword: string,
     options?: ReplaceMessagesOptions
@@ -156,6 +159,7 @@ export function useMailboxMessages({
   const refreshMessages = React.useCallback(
     async (
       accountId: string,
+      folderId: string,
       nextFilters: MailFilterTag[],
       nextSearchKeyword: string,
       options: ReplaceMessagesOptions = {}
@@ -171,6 +175,7 @@ export function useMailboxMessages({
       const nextMessages = await loadMessages(
         toMessageQuery(
           accountId,
+          folderId,
           nextFilters,
           { limit: MESSAGE_LIST_PAGE_SIZE, offset: 0 },
           nextSearchKeyword
@@ -203,6 +208,7 @@ export function useMailboxMessages({
     void loadMessages(
       toMessageQuery(
         selectedAccountId,
+        selectedFolderId,
         filters,
         { limit: MESSAGE_LIST_PAGE_SIZE, offset },
         searchKeyword

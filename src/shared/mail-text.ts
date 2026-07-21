@@ -1,10 +1,7 @@
 const ENCODED_WORD_PATTERN = /=\?([^?]+)\?([BQ])\?([^?]*)\?=/gi
-const ADJACENT_ENCODED_WORD_PATTERN =
-  /(=\?[^?]+\?[BQ]\?[^?]*\?=)\s+(?==\?[^?]+\?[BQ]\?)/gi
-const PERCENT_ENCODED_CHUNK_PATTERN =
-  /(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9_.~!$&'()*+,;=:@/-])+/g
-const LOOSE_QUOTED_PRINTABLE_CHUNK_PATTERN =
-  /(?:=[0-9A-Fa-f]{2}|[A-Za-z0-9_.~!$&'()*+,;:@/? -])+/g
+const ADJACENT_ENCODED_WORD_PATTERN = /(=\?[^?]+\?[BQ]\?[^?]*\?=)\s+(?==\?[^?]+\?[BQ]\?)/gi
+const PERCENT_ENCODED_CHUNK_PATTERN = /(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9_.~!$&'()*+,;=:@/-])+/g
+const LOOSE_QUOTED_PRINTABLE_CHUNK_PATTERN = /(?:=[0-9A-Fa-f]{2}|[A-Za-z0-9_.~!$&'()*+,;:@/? -])+/g
 const HIGH_BYTE_PERCENT_PATTERN = /%(?:[89A-Fa-f][0-9A-Fa-f])/
 const HIGH_BYTE_QUOTED_PRINTABLE_PATTERN = /=(?:[89A-Fa-f][0-9A-Fa-f])/
 

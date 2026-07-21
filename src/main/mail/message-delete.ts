@@ -15,12 +15,13 @@ export type MessageDeleteResult = {
   messageId: number
   accountId: number
   folderId: number
-  action: 'permanent_delete' | 'local_hide' | 'restore'
+  action: 'permanent_delete' | 'local_hide' | 'restore' | 'trash'
   localOnly?: boolean
 }
 
 export type BulkDeleteOptions = {
   localOnly?: boolean
+  mode?: 'permanent' | 'local_hide' | 'trash'
 }
 
 export type BulkDeleteFailure = {
@@ -55,6 +56,51 @@ export async function permanentlyDeleteMessage(messageId: number): Promise<Messa
       accountId: target.accountId,
       folderId: target.folderId,
       action: 'permanent_delete'
+    }
+  } catch (error) {
+    markMessageDeleteError(messageId, getErrorMessage(error))
+    throw error
+  } finally {
+    await client.logout().catch(() => undefined)
+  }
+}
+
+export async function trashMessage(messageId: number): Promise<MessageDeleteResult> {
+  const target = requireDeleteTarget(messageId)
+
+  if (isTrashTarget(target)) {
+    return permanentlyDeleteMessage(messageId)
+  }
+
+  const trashFolder = findFolderByRole(target.accountId, 'trash')
+  if (!trashFolder) {
+    return permanentlyDeleteMessage(messageId)
+  }
+
+  const account = getAccount(target.accountId)
+  if (!account) throw new Error(`Account not found: ${target.accountId}`)
+
+  const client = await SimpleImapSession.connect(account, 'P')
+
+  try {
+    await authenticateImapSession(account, client)
+    const capabilities = await client.capability().catch(() => new Set<string>())
+    await client.selectMailbox(target.folderPath)
+
+    if (capabilities.has('MOVE')) {
+      await client.uidMove(target.uid, trashFolder.path)
+    } else {
+      await client.uidCopy(target.uid, trashFolder.path)
+      await client.setDeletedFlag(target.uid, true)
+      await client.expunge()
+    }
+    markMessageRemoteDeleted(messageId)
+
+    return {
+      messageId,
+      accountId: target.accountId,
+      folderId: target.folderId,
+      action: 'trash'
     }
   } catch (error) {
     markMessageDeleteError(messageId, getErrorMessage(error))
@@ -145,7 +191,7 @@ export async function bulkDelete(
   const succeededMessageIds: number[] = []
   const failedItems: BulkDeleteFailure[] = []
 
-  if (options.localOnly) {
+  if (options.localOnly || options.mode === 'local_hide') {
     for (const messageId of uniqueMessageIds(messageIds)) {
       try {
         hideMessageLocally(messageId)
@@ -157,6 +203,8 @@ export async function bulkDelete(
 
     return toBulkResult(succeededMessageIds, failedItems)
   }
+
+  const isTrashMode = options.mode === 'trash'
 
   const targets = uniqueMessageIds(messageIds).map((messageId) => ({
     messageId,
@@ -182,16 +230,30 @@ export async function bulkDelete(
       continue
     }
 
+    const trashFolder = isTrashMode ? findFolderByRole(group.accountId, 'trash') : null
+    const shouldMoveToTrash = isTrashMode && trashFolder && !isTrashTarget(group.targets[0])
+
     const client = await SimpleImapSession.connect(account, 'X')
 
     try {
       await authenticateImapSession(account, client)
+      const capabilities = await client.capability().catch(() => new Set<string>())
       await client.selectMailbox(group.folderPath)
 
       for (const target of group.targets) {
         try {
-          await client.setDeletedFlag(target.uid, true)
-          await client.expunge()
+          if (shouldMoveToTrash) {
+            if (capabilities.has('MOVE')) {
+              await client.uidMove(target.uid, trashFolder.path)
+            } else {
+              await client.uidCopy(target.uid, trashFolder.path)
+              await client.setDeletedFlag(target.uid, true)
+              await client.expunge()
+            }
+          } else {
+            await client.setDeletedFlag(target.uid, true)
+            await client.expunge()
+          }
           markMessageRemoteDeleted(target.messageId)
 
           succeededMessageIds.push(target.messageId)

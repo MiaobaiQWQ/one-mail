@@ -103,16 +103,17 @@ export class SimpleImapSession {
     const internalDate = formatAppendInternalDate(options.internalDate)
     const literal = Buffer.from(rawMessage, 'utf8')
     const tag = `${this.tagPrefix}${String(this.tagIndex++).padStart(4, '0')}`
-    const command = ['APPEND', quoteAtom(mailboxPath), flags, internalDate, `{${literal.byteLength}}`]
+    const command = [
+      'APPEND',
+      quoteAtom(mailboxPath),
+      flags,
+      internalDate,
+      `{${literal.byteLength}}`
+    ]
       .filter(Boolean)
       .join(' ')
 
-    await this.literalCommand(
-      tag,
-      command,
-      literal,
-      BODY_FETCH_TIMEOUT_MS
-    )
+    await this.literalCommand(tag, command, literal, BODY_FETCH_TIMEOUT_MS)
   }
 
   async uidMove(uid: number, destinationMailbox: string): Promise<void> {
@@ -290,9 +291,20 @@ function formatAppendInternalDate(value?: Date | string): string {
   if (Number.isNaN(date.getTime())) return ''
 
   const day = String(date.getUTCDate()).padStart(2, '0')
-  const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][
-    date.getUTCMonth()
-  ]
+  const month = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ][date.getUTCMonth()]
   const year = date.getUTCFullYear()
   const hours = String(date.getUTCHours()).padStart(2, '0')
   const minutes = String(date.getUTCMinutes()).padStart(2, '0')

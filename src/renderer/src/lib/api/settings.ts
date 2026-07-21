@@ -31,9 +31,10 @@ export async function saveSettings(input: SettingsUpdateInput): Promise<AppSetti
   return window.api.settings.update(input)
 }
 
-
-
-export async function detectShortcutConflict(keyString: string, actionId: string): Promise<string | null> {
+export async function detectShortcutConflict(
+  keyString: string,
+  actionId: string
+): Promise<string | null> {
   return window.api.settings.detectShortcutConflict(keyString, actionId)
 }
 

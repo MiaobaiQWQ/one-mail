@@ -76,7 +76,8 @@ const api = {
   settings: {
     get: () => ipcRenderer.invoke('settings/get'),
     update: (input) => ipcRenderer.invoke('settings/update', input),
-    detectShortcutConflict: (keyString, actionId) => ipcRenderer.invoke('settings/detectShortcutConflict', keyString, actionId),
+    detectShortcutConflict: (keyString, actionId) =>
+      ipcRenderer.invoke('settings/detectShortcutConflict', keyString, actionId),
     getBackupSync: () => ipcRenderer.invoke('settings/getBackupSync'),
     updateBackupSync: (input) => ipcRenderer.invoke('settings/updateBackupSync', input),
     testBackupSync: (input) => ipcRenderer.invoke('settings/testBackupSync', input),

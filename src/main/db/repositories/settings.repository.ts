@@ -83,16 +83,32 @@ export function getSettings(): AppSettings {
     syncWindowDays: readNumber(byKey.get(settingsDefinition.syncWindowDays.key), 90),
     openAtLogin: getOpenAtLogin(),
     locale: byKey.get(settingsDefinition.locale.key)?.setting_value ?? defaultSettings.locale,
-    theme: (byKey.get(settingsDefinition.theme.key)?.setting_value as AppSettings['theme']) ?? defaultSettings.theme,
-    contextMenuEnabled: readBoolean(byKey.get(settingsDefinition.contextMenuEnabled.key), defaultSettings.contextMenuEnabled),
-    contextMenuOptions: readJson(byKey.get(settingsDefinition.contextMenuOptions.key)) ?? defaultSettings.contextMenuOptions,
-    menuDisplayMode: (byKey.get(settingsDefinition.menuDisplayMode.key)?.setting_value as AppSettings['menuDisplayMode']) ?? defaultSettings.menuDisplayMode,
+    theme:
+      (byKey.get(settingsDefinition.theme.key)?.setting_value as AppSettings['theme']) ??
+      defaultSettings.theme,
+    contextMenuEnabled: readBoolean(
+      byKey.get(settingsDefinition.contextMenuEnabled.key),
+      defaultSettings.contextMenuEnabled
+    ),
+    contextMenuOptions:
+      readJson(byKey.get(settingsDefinition.contextMenuOptions.key)) ??
+      defaultSettings.contextMenuOptions,
+    menuDisplayMode:
+      (byKey.get(settingsDefinition.menuDisplayMode.key)
+        ?.setting_value as AppSettings['menuDisplayMode']) ?? defaultSettings.menuDisplayMode,
     shortcuts: readJson(byKey.get(settingsDefinition.shortcuts.key)) ?? defaultSettings.shortcuts,
-    translateProvider: (byKey.get(settingsDefinition.translateProvider.key)?.setting_value as AppSettings['translateProvider']) ?? defaultSettings.translateProvider,
+    translateProvider:
+      (byKey.get(settingsDefinition.translateProvider.key)
+        ?.setting_value as AppSettings['translateProvider']) ?? defaultSettings.translateProvider,
     translateEndpoint: byKey.get(settingsDefinition.translateEndpoint.key)?.setting_value,
     translateApiKey: byKey.get(settingsDefinition.translateApiKey.key)?.setting_value,
-    privacyMode: (byKey.get(settingsDefinition.privacyMode.key)?.setting_value as AppSettings['privacyMode']) ?? defaultSettings.privacyMode,
-    notificationsEnabled: readBoolean(byKey.get(settingsDefinition.notificationsEnabled.key), defaultSettings.notificationsEnabled),
+    privacyMode:
+      (byKey.get(settingsDefinition.privacyMode.key)
+        ?.setting_value as AppSettings['privacyMode']) ?? defaultSettings.privacyMode,
+    notificationsEnabled: readBoolean(
+      byKey.get(settingsDefinition.notificationsEnabled.key),
+      defaultSettings.notificationsEnabled
+    ),
     notificationSound: byKey.get(settingsDefinition.notificationSound.key)?.setting_value
   }
 }
@@ -121,27 +137,67 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
     settingsDefinition.openAtLogin.type
   )
   writeSetting(settingsDefinition.locale.key, next.locale, settingsDefinition.locale.type)
-  
+
   writeSetting(settingsDefinition.theme.key, next.theme, settingsDefinition.theme.type)
-  writeSetting(settingsDefinition.contextMenuEnabled.key, next.contextMenuEnabled ? '1' : '0', settingsDefinition.contextMenuEnabled.type)
-  writeSetting(settingsDefinition.contextMenuOptions.key, JSON.stringify(next.contextMenuOptions), settingsDefinition.contextMenuOptions.type)
-  writeSetting(settingsDefinition.menuDisplayMode.key, next.menuDisplayMode, settingsDefinition.menuDisplayMode.type)
-  writeSetting(settingsDefinition.shortcuts.key, JSON.stringify(next.shortcuts), settingsDefinition.shortcuts.type)
-  writeSetting(settingsDefinition.translateProvider.key, next.translateProvider, settingsDefinition.translateProvider.type)
+  writeSetting(
+    settingsDefinition.contextMenuEnabled.key,
+    next.contextMenuEnabled ? '1' : '0',
+    settingsDefinition.contextMenuEnabled.type
+  )
+  writeSetting(
+    settingsDefinition.contextMenuOptions.key,
+    JSON.stringify(next.contextMenuOptions),
+    settingsDefinition.contextMenuOptions.type
+  )
+  writeSetting(
+    settingsDefinition.menuDisplayMode.key,
+    next.menuDisplayMode,
+    settingsDefinition.menuDisplayMode.type
+  )
+  writeSetting(
+    settingsDefinition.shortcuts.key,
+    JSON.stringify(next.shortcuts),
+    settingsDefinition.shortcuts.type
+  )
+  writeSetting(
+    settingsDefinition.translateProvider.key,
+    next.translateProvider,
+    settingsDefinition.translateProvider.type
+  )
   if (next.translateEndpoint) {
-    writeSetting(settingsDefinition.translateEndpoint.key, next.translateEndpoint, settingsDefinition.translateEndpoint.type)
+    writeSetting(
+      settingsDefinition.translateEndpoint.key,
+      next.translateEndpoint,
+      settingsDefinition.translateEndpoint.type
+    )
   } else {
     deleteSetting(settingsDefinition.translateEndpoint.key)
   }
   if (next.translateApiKey) {
-    writeSetting(settingsDefinition.translateApiKey.key, next.translateApiKey, settingsDefinition.translateApiKey.type)
+    writeSetting(
+      settingsDefinition.translateApiKey.key,
+      next.translateApiKey,
+      settingsDefinition.translateApiKey.type
+    )
   } else {
     deleteSetting(settingsDefinition.translateApiKey.key)
   }
-  writeSetting(settingsDefinition.privacyMode.key, next.privacyMode, settingsDefinition.privacyMode.type)
-  writeSetting(settingsDefinition.notificationsEnabled.key, next.notificationsEnabled ? '1' : '0', settingsDefinition.notificationsEnabled.type)
+  writeSetting(
+    settingsDefinition.privacyMode.key,
+    next.privacyMode,
+    settingsDefinition.privacyMode.type
+  )
+  writeSetting(
+    settingsDefinition.notificationsEnabled.key,
+    next.notificationsEnabled ? '1' : '0',
+    settingsDefinition.notificationsEnabled.type
+  )
   if (next.notificationSound) {
-    writeSetting(settingsDefinition.notificationSound.key, next.notificationSound, settingsDefinition.notificationSound.type)
+    writeSetting(
+      settingsDefinition.notificationSound.key,
+      next.notificationSound,
+      settingsDefinition.notificationSound.type
+    )
   } else {
     deleteSetting(settingsDefinition.notificationSound.key)
   }
@@ -292,9 +348,7 @@ function writeSetting(key: string, value: string, valueType: string): void {
 }
 
 function deleteSetting(key: string): void {
-  getDatabase()
-    .prepare(`DELETE FROM onemail_app_settings WHERE setting_key = :key`)
-    .run({ key })
+  getDatabase().prepare(`DELETE FROM onemail_app_settings WHERE setting_key = :key`).run({ key })
 }
 
 function readBackupSyncSettings(): BackupSyncSettings {

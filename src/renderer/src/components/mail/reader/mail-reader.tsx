@@ -11,7 +11,10 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 
-import { formatAbsoluteTime, formatRelativeTime } from '@renderer/components/mail/shared/date-format'
+import {
+  formatAbsoluteTime,
+  formatRelativeTime
+} from '@renderer/components/mail/shared/date-format'
 import { EllipsisTooltip } from '@renderer/components/mail/shared/ellipsis-tooltip'
 import {
   ATTACHMENT_METADATA_PENDING_SIZE,
@@ -85,7 +88,7 @@ export function MailReader({
 }: MailReaderProps): React.JSX.Element {
   // 根据隐私模式决定是否默认阻止外部图片
   // strict 和 medium 阻止，loose 和 off 允许
-  const externalImagesBlocked = privacyMode === 'strict' || privacyMode === 'medium';
+  const externalImagesBlocked = privacyMode === 'strict' || privacyMode === 'medium'
   const { locale, t } = useI18n()
   const canShowHtml = Boolean(message.html)
   const hasLoadedBody = message.bodyLoaded || canShowHtml

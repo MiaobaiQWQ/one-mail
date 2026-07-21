@@ -290,7 +290,7 @@ export async function deleteDraftMessage(outboxId: number): Promise<boolean> {
 export async function deleteMessage(input: DeleteMessageInput): Promise<DeleteMessageResult> {
   const result = await window.api.messages.delete({
     messageId: input.messageId,
-    mode: 'permanent'
+    mode: input.permanent ? 'permanent' : 'trash'
   })
   return {
     messageId: result.messageId,
@@ -306,7 +306,7 @@ export async function bulkDeleteMessages(
 ): Promise<BulkDeleteMessagesResult> {
   return window.api.messages.bulkDelete({
     messageIds: input.messageIds,
-    mode: 'permanent'
+    mode: input.permanent ? 'permanent' : 'trash'
   })
 }
 
@@ -542,14 +542,19 @@ function formatMessageDate(value?: string): string {
 
 export function toMessageQuery(
   selectedAccountId: string,
+  selectedFolderId: string,
   filters: MessageFilterTag[],
   pagination?: Pick<MessageListQuery, 'limit' | 'offset'>,
   searchKeyword?: string
 ): MessageListQuery {
   const keyword = searchKeyword?.trim()
 
+  // Extract role if it starts with folder_ (e.g. folder_inbox -> inbox)
+  const role = selectedFolderId.startsWith('folder_') ? selectedFolderId.split('_')[1] : undefined
+
   return {
     accountId: selectedAccountId === 'all' ? undefined : Number(selectedAccountId),
+    folderRole: role,
     filters,
     keyword: keyword || undefined,
     limit: pagination?.limit ?? MESSAGE_LIST_PAGE_SIZE,

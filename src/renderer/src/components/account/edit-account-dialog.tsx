@@ -9,7 +9,13 @@ import { Button } from '@renderer/components/ui/button'
 import { FieldError, FieldGroup } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@renderer/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@renderer/components/ui/select'
 import { ACCOUNT_COLORS } from '@renderer/lib/api/accounts'
 import { cn } from '@renderer/lib/utils'
 import type { AccountUpdateInput } from '../../../../shared/types'
@@ -125,7 +131,7 @@ export function EditAccountDialog({
         password: isOAuthAccount ? undefined : password,
         avatarText: values.avatarText?.trim() || undefined,
         avatarUrl: values.avatarUrl || undefined,
-        colorKey: values.colorKey === 'auto' ? undefined : (values.colorKey || undefined)
+        colorKey: values.colorKey === 'auto' ? undefined : values.colorKey || undefined
       })
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : t('account.add.saveError'))
@@ -186,13 +192,19 @@ export function EditAccountDialog({
           <AccountFormField
             id="edit-account-avatar-text"
             label="自定义图标"
-            error={form.formState.errors.avatarText?.message || form.formState.errors.avatarUrl?.message}
+            error={
+              form.formState.errors.avatarText?.message || form.formState.errors.avatarUrl?.message
+            }
           >
             <div className="flex items-center gap-3">
               <div className="relative group size-10 shrink-0">
                 {avatarUrl ? (
                   <>
-                    <img src={avatarUrl} alt="Avatar" className="size-full rounded-md object-cover border" />
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="size-full rounded-md object-cover border"
+                    />
                     <button
                       type="button"
                       onClick={handleRemoveImage}
@@ -244,8 +256,10 @@ export function EditAccountDialog({
                 {ACCOUNT_COLORS.map((color) => (
                   <SelectItem key={color} value={color}>
                     <div className="flex items-center gap-2">
-                      <div className={cn("size-4 rounded-sm", color)} />
-                      <span className="text-xs uppercase">{color.replace('bg-', '').replace('-500', '')}</span>
+                      <div className={cn('size-4 rounded-sm', color)} />
+                      <span className="text-xs uppercase">
+                        {color.replace('bg-', '').replace('-500', '')}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}

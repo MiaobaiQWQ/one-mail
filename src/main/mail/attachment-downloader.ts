@@ -55,7 +55,9 @@ function getDefaultAttachmentDownloadDir(): string {
   return app.getPath('downloads')
 }
 
-export async function loadAttachmentContent(attachmentId: number): Promise<ParsedMessageAttachment> {
+export async function loadAttachmentContent(
+  attachmentId: number
+): Promise<ParsedMessageAttachment> {
   const locator = getAttachmentDownloadLocator(attachmentId)
   if (!locator) throw new Error(`Attachment not found: ${attachmentId}`)
 

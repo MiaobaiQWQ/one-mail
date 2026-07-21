@@ -70,7 +70,7 @@ export function ImageCropDialog({
       const MAX_DIMENSION = 256
       let finalWidth = cropWidth
       let finalHeight = cropHeight
-      
+
       if (cropWidth > MAX_DIMENSION || cropHeight > MAX_DIMENSION) {
         if (cropWidth > cropHeight) {
           finalWidth = MAX_DIMENSION
