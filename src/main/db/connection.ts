@@ -19,21 +19,15 @@ export type SqliteParams = Record<string, SqliteValue> | SqliteValue[]
 export type SqliteRow = Record<string, unknown>
 
 export type SqliteStatement<T extends SqliteRow = SqliteRow> = {
+  all(namedParameters: Record<string, SqliteValue>): T[]
   all(...anonymousParameters: SqliteValue[]): T[]
-  all(namedParameters: Record<string, SqliteValue>, ...anonymousParameters: SqliteValue[]): T[]
+  get(namedParameters: Record<string, SqliteValue>): T | undefined
   get(...anonymousParameters: SqliteValue[]): T | undefined
-  get(
-    namedParameters: Record<string, SqliteValue>,
-    ...anonymousParameters: SqliteValue[]
-  ): T | undefined
-  run(...anonymousParameters: SqliteValue[]): {
+  run(namedParameters: Record<string, SqliteValue>): {
     changes: number
     lastInsertRowid: number | bigint
   }
-  run(
-    namedParameters: Record<string, SqliteValue>,
-    ...anonymousParameters: SqliteValue[]
-  ): {
+  run(...anonymousParameters: SqliteValue[]): {
     changes: number
     lastInsertRowid: number | bigint
   }
