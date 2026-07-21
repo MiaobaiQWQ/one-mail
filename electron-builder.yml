@@ -29,8 +29,14 @@ mac:
   icon: build/icon.icns
   category: public.app-category.productivity
   target:
-    - dmg
-    - zip
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
@@ -41,7 +47,7 @@ mac:
   notarize: false
 dmg:
   icon: build/icon.png
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-mac-${arch}.${ext}
 linux:
   icon: build/icons
   target:

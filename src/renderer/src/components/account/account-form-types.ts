@@ -8,6 +8,7 @@ export const accountKinds = [
   'yahoo',
   'aliyun',
   'aliyunEnterprise',
+  'tencentEnterprise',
   'mail189',
   'sohu',
   'qq',
@@ -112,6 +113,23 @@ export const providerPresets: ProviderPreset[] = [
     passwordLabelKey: 'account.form.passwordOrAuthCode',
     passwordPlaceholderKey: 'account.form.aliyunEnterprisePasswordPlaceholder',
     guideKey: 'account.add.guide.aliyunEnterprise'
+  },
+  {
+    kind: 'tencentEnterprise',
+    labelKey: 'account.provider.tencentEnterprise',
+    providerKey: 'tencent_enterprise',
+    authType: 'password',
+    imapHost: 'imap.exmail.qq.com',
+    imapPort: 993,
+    imapSecurity: 'ssl_tls',
+    smtpHost: 'smtp.exmail.qq.com',
+    smtpPort: 465,
+    smtpSecurity: 'ssl_tls',
+    smtpAuthType: 'password',
+    smtpEnabled: true,
+    passwordLabelKey: 'account.form.passwordOrAuthCode',
+    passwordPlaceholderKey: 'account.form.tencentEnterprisePasswordPlaceholder',
+    guideKey: 'account.add.guide.tencentEnterprise'
   },
   {
     kind: 'mail189',
@@ -338,7 +356,12 @@ export const providerPresets: ProviderPreset[] = [
     authType: 'manual',
     imapHost: '',
     imapPort: 993,
-    imapSecurity: 'ssl_tls'
+    imapSecurity: 'ssl_tls',
+    smtpHost: '',
+    smtpPort: 465,
+    smtpSecurity: 'ssl_tls',
+    smtpAuthType: 'manual',
+    smtpEnabled: true
   }
 ]
 
@@ -357,7 +380,15 @@ export function createAccountSchema(t: (key: TranslationKey) => string) {
         .int(t('account.form.portInteger'))
         .min(1, t('account.form.portMin'))
         .max(65535, t('account.form.portMax')),
-      imapSecurity: z.enum(['ssl_tls', 'starttls', 'none'])
+      imapSecurity: z.enum(['ssl_tls', 'starttls', 'none']),
+      smtpHost: z.string().trim().optional(),
+      smtpPort: z.coerce
+        .number<number>(t('account.form.portRequired'))
+        .int(t('account.form.portInteger'))
+        .min(1, t('account.form.portMin'))
+        .max(65535, t('account.form.portMax'))
+        .optional(),
+      smtpSecurity: z.enum(['ssl_tls', 'starttls', 'none']).optional()
     })
     .superRefine((value, context) => {
       if (value.kind !== 'outlook' && !z.email().safeParse(value.email).success) {
@@ -399,7 +430,10 @@ export const defaultAccountFormValues: AccountFormValues = {
   authType: 'app_password',
   imapHost: 'imap.gmail.com',
   imapPort: 993,
-  imapSecurity: 'ssl_tls'
+  imapSecurity: 'ssl_tls',
+  smtpHost: 'smtp.gmail.com',
+  smtpPort: 465,
+  smtpSecurity: 'ssl_tls'
 }
 
 export function getProviderPreset(kind: AccountKind): ProviderPreset {

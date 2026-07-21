@@ -210,6 +210,7 @@ export const enUS = {
   'account.provider.yahoo': 'Yahoo Mail',
   'account.provider.aliyun': 'Alibaba Mail',
   'account.provider.aliyunEnterprise': 'Alibaba Mail Enterprise',
+  'account.provider.tencentEnterprise': 'Tencent Enterprise Mail',
   'account.provider.mail189': '189 Mail',
   'account.provider.sohu': 'Sohu Mail',
   'account.provider.qq': 'QQ / Foxmail',
@@ -233,6 +234,7 @@ export const enUS = {
   'account.form.clientPassword': 'Client password',
   'account.form.dedicatedPassword': 'Dedicated password',
   'account.form.aliyunClientPassword': 'Third-party client security password',
+  'account.form.tencentEnterprisePasswordPlaceholder': 'Client-specific password',
   'account.form.passwordOrAuthCode': 'Password or authorization code',
   'account.form.gmailPasswordPlaceholder': 'Gmail app password',
   'account.form.yahooPasswordPlaceholder': 'Yahoo app password',
@@ -256,8 +258,11 @@ export const enUS = {
   'account.form.labelPlaceholder': 'Defaults to email address',
   'account.form.type': 'Email type',
   'account.form.imapHost': 'IMAP server',
+  'account.form.smtpHost': 'SMTP server',
   'account.form.port': 'Port',
+  'account.form.smtpPort': 'SMTP port',
   'account.form.security': 'Connection security',
+  'account.form.smtpSecurity': 'SMTP connection security',
   'account.form.securityNone': 'No encryption',
   'account.form.requiredEmail': 'Enter a valid email address',
   'account.form.requiredPassword': 'Enter a password or authorization code',
@@ -295,6 +300,8 @@ export const enUS = {
     'Before adding {label}, enable IMAP/SMTP and prepare a dedicated password.',
   'account.add.guide.aliyunEnterprise':
     'Before adding {label}, ask the administrator to allow third-party clients and enable IMAP/SMTP for this account. If third-party client security password or secure login IP restrictions are enabled, prepare the security password and confirm the current IP is allowed.',
+  'account.add.guide.tencentEnterprise':
+    'Before adding {label}, ensure IMAP/SMTP service is enabled and use the client-specific password to log in.',
   'account.add.guide.custom':
     'Before adding custom IMAP, confirm the server, port, connection security, and password or authorization code.',
   'account.add.guide.default': 'Before adding {label}, check mailbox access settings if needed, ',

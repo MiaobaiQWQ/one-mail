@@ -94,6 +94,66 @@ export function CustomImapAccountForm({ form }: CustomImapAccountFormProps): Rea
           )}
         />
       </AccountFormField>
+
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_112px]">
+        <AccountFormField
+          id="smtp-host"
+          label={t('account.form.smtpHost')}
+          error={form.formState.errors.smtpHost?.message}
+        >
+          <Input
+            id="smtp-host"
+            placeholder="smtp.example.com"
+            aria-invalid={Boolean(form.formState.errors.smtpHost)}
+            {...form.register('smtpHost')}
+          />
+        </AccountFormField>
+
+        <AccountFormField
+          id="smtp-port"
+          label={t('account.form.smtpPort')}
+          error={form.formState.errors.smtpPort?.message}
+        >
+          <Input
+            id="smtp-port"
+            type="number"
+            min={1}
+            max={65535}
+            aria-invalid={Boolean(form.formState.errors.smtpPort)}
+            {...form.register('smtpPort', { valueAsNumber: true })}
+          />
+        </AccountFormField>
+      </div>
+
+      <AccountFormField
+        id="smtp-security"
+        label={t('account.form.smtpSecurity')}
+        error={form.formState.errors.smtpSecurity?.message}
+      >
+        <Controller
+          control={form.control}
+          name="smtpSecurity"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger
+                id="smtp-security"
+                className="w-full"
+                aria-label={t('account.form.smtpSecurity')}
+                aria-invalid={Boolean(form.formState.errors.smtpSecurity)}
+              >
+                <SelectValue placeholder={t('account.form.smtpSecurity')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="ssl_tls">SSL/TLS</SelectItem>
+                  <SelectItem value="starttls">STARTTLS</SelectItem>
+                  <SelectItem value="none">{t('account.form.securityNone')}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+        />
+      </AccountFormField>
     </>
   )
 }

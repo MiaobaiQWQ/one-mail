@@ -50,20 +50,18 @@ type MailboxStatus = {
   uidValidity?: string
 }
 
-type SyncedFolderRole = 'inbox' | 'junk'
+type SyncedFolderRole = 'inbox' | 'junk' | 'sent' | 'drafts' | 'trash' | 'archive' | 'custom'
 
 type ListedMailbox = {
   path: string
   name: string
   delimiter?: string
   attributes: string[]
-  role: SyncedFolderRole | 'custom'
+  role: SyncedFolderRole
   selectable: boolean
 }
 
-type SyncMailbox = ListedMailbox & {
-  role: SyncedFolderRole
-}
+type SyncMailbox = ListedMailbox
 
 type SyncCursor = {
   folderId: number
@@ -473,9 +471,8 @@ async function listSyncMailboxes(client: ImapSession): Promise<SyncMailbox[]> {
   const listed = await client.listMailboxes().catch(() => [])
   const selectable = listed.filter((mailbox) => mailbox.selectable)
   const inbox = selectable.find((mailbox) => mailbox.role === 'inbox') ?? createInboxMailbox()
-  const junk = selectable.find((mailbox) => mailbox.role === 'junk')
 
-  return uniqueMailboxes([inbox, junk].filter(isSyncMailbox))
+  return uniqueMailboxes([inbox, ...selectable.filter((m) => m.path !== inbox.path)])
 }
 
 function createInboxMailbox(): SyncMailbox {
@@ -486,10 +483,6 @@ function createInboxMailbox(): SyncMailbox {
     role: 'inbox',
     selectable: true
   }
-}
-
-function isSyncMailbox(mailbox: ListedMailbox | undefined): mailbox is SyncMailbox {
-  return mailbox?.role === 'inbox' || mailbox?.role === 'junk'
 }
 
 function uniqueMailboxes(mailboxes: SyncMailbox[]): SyncMailbox[] {
@@ -563,9 +556,13 @@ function parseImapString(value: string): string | undefined {
 function detectMailboxRole(
   path: string,
   attributes: string[]
-): SyncedFolderRole | ListedMailbox['role'] {
+): SyncedFolderRole {
   if (hasAttribute(attributes, 'Inbox') || path.toUpperCase() === 'INBOX') return 'inbox'
   if (hasAttribute(attributes, 'Junk')) return 'junk'
+  if (hasAttribute(attributes, 'Sent')) return 'sent'
+  if (hasAttribute(attributes, 'Drafts')) return 'drafts'
+  if (hasAttribute(attributes, 'Trash')) return 'trash'
+  if (hasAttribute(attributes, 'Archive')) return 'archive'
 
   const normalizedPath = normalizeMailboxPath(path)
   if (
@@ -591,12 +588,48 @@ function detectMailboxRole(
     return 'junk'
   }
 
+  if (
+    ['sent', 'sent messages', 'sent items', '已发送', '已发送邮件'].includes(normalizedPath) ||
+    normalizedPath.endsWith('/sent') ||
+    normalizedPath.endsWith('/已发送')
+  ) {
+    return 'sent'
+  }
+
+  if (
+    ['drafts', '草稿', '草稿箱'].includes(normalizedPath) ||
+    normalizedPath.endsWith('/drafts') ||
+    normalizedPath.endsWith('/草稿箱')
+  ) {
+    return 'drafts'
+  }
+
+  if (
+    ['trash', 'deleted messages', 'deleted items', '已删除', '已删除邮件', '已删除的邮件'].includes(normalizedPath) ||
+    normalizedPath.endsWith('/trash') ||
+    normalizedPath.endsWith('/已删除')
+  ) {
+    return 'trash'
+  }
+
+  if (
+    ['archive', '归档', '归档邮件'].includes(normalizedPath) ||
+    normalizedPath.endsWith('/archive') ||
+    normalizedPath.endsWith('/归档')
+  ) {
+    return 'archive'
+  }
+
   return 'custom'
 }
 
 function getMailboxDisplayName(path: string, role: ListedMailbox['role']): string {
   if (role === 'inbox') return '收件箱'
   if (role === 'junk') return '垃圾邮件'
+  if (role === 'sent') return '已发送'
+  if (role === 'drafts') return '草稿箱'
+  if (role === 'trash') return '已删除'
+  if (role === 'archive') return '归档'
 
   return path.split(/[/.]/).filter(Boolean).at(-1) ?? path
 }
@@ -1233,7 +1266,13 @@ function ensureSyncFolder(accountId: number, mailbox: SyncMailbox): number {
 }
 
 function getFolderSortOrder(role: SyncedFolderRole): number {
-  return role === 'inbox' ? 10 : 20
+  if (role === 'inbox') return 10
+  if (role === 'sent') return 20
+  if (role === 'drafts') return 30
+  if (role === 'archive') return 40
+  if (role === 'junk') return 50
+  if (role === 'trash') return 60
+  return 100
 }
 
 function markAccountSynced(accountId: number): void {
