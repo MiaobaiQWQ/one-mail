@@ -344,7 +344,7 @@ export function MailboxWorkspace(): React.JSX.Element {
       setSearchKeyword('')
 
       const nextMessages = await loadMessages(
-        toMessageQuery(accountId, [], { limit: MESSAGE_LIST_PAGE_SIZE, offset: 0 }, '')
+        toMessageQuery(accountId, selectedFolderId, [], { limit: MESSAGE_LIST_PAGE_SIZE, offset: 0 }, '')
       )
       const numericMessageId = messageId ? Number(messageId) : undefined
       const targetMessage =

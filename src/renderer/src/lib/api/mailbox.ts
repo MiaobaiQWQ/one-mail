@@ -144,7 +144,7 @@ export async function loadInitialData(): Promise<{
   const selectedAccountId = getDefaultSelectedAccountId(accounts)
   const messages = selectedAccountId
     ? await window.api.messages.list(
-        toMessageQuery(selectedAccountId, [], { limit: MESSAGE_LIST_PAGE_SIZE, offset: 0 })
+        toMessageQuery(selectedAccountId, 'folder_inbox', [], { limit: MESSAGE_LIST_PAGE_SIZE, offset: 0 })
       )
     : []
 
