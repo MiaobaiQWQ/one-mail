@@ -66,6 +66,7 @@ const api = {
   },
   notifications: {
     status: () => ipcRenderer.invoke('notifications/status'),
+    test: () => ipcRenderer.invoke('notifications/test'),
     onNewMail: (callback): (() => void) => {
       const listener = (_event, notification): void => callback(notification)
       ipcRenderer.on('notifications/newMail', listener)
@@ -75,6 +76,8 @@ const api = {
   settings: {
     get: () => ipcRenderer.invoke('settings/get'),
     update: (input) => ipcRenderer.invoke('settings/update', input),
+    importBackgroundImage: (filePath) => ipcRenderer.invoke('settings/importBackgroundImage', filePath),
+    detectShortcutConflict: (keyString, actionId) => ipcRenderer.invoke('settings/detectShortcutConflict', keyString, actionId),
     getBackupSync: () => ipcRenderer.invoke('settings/getBackupSync'),
     updateBackupSync: (input) => ipcRenderer.invoke('settings/updateBackupSync', input),
     testBackupSync: (input) => ipcRenderer.invoke('settings/testBackupSync', input),

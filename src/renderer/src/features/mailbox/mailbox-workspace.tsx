@@ -76,6 +76,7 @@ import { useMailComposer } from './use-mail-composer'
 import { useMessageActions } from './use-message-actions'
 import { useMessageSelection } from './use-message-selection'
 import { useSyncFeedback } from './use-sync-feedback'
+import { useShortcuts } from '@renderer/hooks/use-shortcuts'
 
 export type DialogKind = 'edit' | 'delete' | 'settings' | null
 
@@ -786,10 +787,68 @@ export function MailboxWorkspace(): React.JSX.Element {
     })
   }
 
+  useShortcuts({
+    sync: () => {
+      void handleRefreshAccount(selectedAccount)
+    },
+    search: () => {
+      // Focus search input
+      const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement
+      if (searchInput) {
+        searchInput.focus()
+      }
+    },
+    'next-message': () => {
+      if (!selectedMessage) return
+      const currentIndex = messages.findIndex(m => m.id === selectedMessage.id)
+      if (currentIndex >= 0 && currentIndex < messages.length - 1) {
+        handleSelectMessage(messages[currentIndex + 1].id)
+      }
+    },
+    'prev-message': () => {
+      if (!selectedMessage) return
+      const currentIndex = messages.findIndex(m => m.id === selectedMessage.id)
+      if (currentIndex > 0) {
+        handleSelectMessage(messages[currentIndex - 1].id)
+      }
+    },
+    compose: () => {
+      void openComposer('new')
+    },
+    reply: () => {
+      if (selectedMessage) void openComposer('reply', selectedMessage)
+    },
+    'reply-all': () => {
+      if (selectedMessage) void openComposer('reply_all', selectedMessage)
+    },
+    forward: () => {
+      if (selectedMessage) void openComposer('forward', selectedMessage)
+    },
+    delete: () => {
+      if (selectedMessages.length > 0) {
+        requestDeleteMessages(selectedMessages)
+      } else if (selectedMessage) {
+        requestDeleteMessages([selectedMessage])
+      }
+    }
+  })
+
   return (
-    <main className="flex h-screen min-h-screen flex-col overflow-hidden bg-background text-foreground">
-      <div className="relative shrink-0">
-        <TitleBar
+    <main className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-background text-foreground">
+      {/* Background Image Layer */}
+      <div 
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          backgroundImage: 'var(--bg-image)',
+          backgroundSize: 'var(--bg-size, cover)',
+          backgroundRepeat: 'var(--bg-repeat, no-repeat)',
+          backgroundPosition: 'center',
+          opacity: 'var(--bg-opacity, 0.5)'
+        }}
+      />
+      <div className="relative z-10 flex h-full w-full flex-col overflow-hidden">
+        <div className="relative shrink-0">
+          <TitleBar
           platform={systemInfo?.platform}
           onAddAccount={handleOpenAddAccountWindow}
           onOpenSettings={() => {
@@ -1057,6 +1116,7 @@ export function MailboxWorkspace(): React.JSX.Element {
           void confirmDelete()
         }}
       />
+      </div>
     </main>
   )
 }

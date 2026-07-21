@@ -362,12 +362,49 @@ export type NotificationStatus = {
   desktopSupported: boolean
 }
 
+export type BackgroundImageFit = 'cover' | 'contain' | 'tile'
+
+export type BackgroundImageSettings = {
+  path: string
+  filename: string
+  fit: BackgroundImageFit
+  opacity: number
+}
+
+export type ShortcutBinding = {
+  actionId: string
+  keys: string
+}
+
+export type TranslateProvider = 'deeplx' | 'llm'
+
+export type PrivacyMode = 'strict' | 'medium' | 'loose' | 'off'
+
+export type MenuDisplayMode = 'hover' | 'click' | 'always'
+
 export type AppSettings = {
   syncIntervalMinutes: number
   syncWindowDays: number
   openAtLogin: boolean
   externalImagesBlocked: boolean
   locale: string
+
+  theme: AppTheme
+  backgroundImage?: BackgroundImageSettings
+  contextMenuEnabled: boolean
+  contextMenuOptions: string[]
+  menuDisplayMode: MenuDisplayMode
+
+  shortcuts: ShortcutBinding[]
+
+  translateProvider: TranslateProvider
+  translateEndpoint?: string
+  translateApiKey?: string
+
+  privacyMode: PrivacyMode
+
+  notificationsEnabled: boolean
+  notificationSound?: string
 }
 
 export type SettingsUpdateInput = Partial<AppSettings>
@@ -452,7 +489,7 @@ export type SystemInfo = {
   userDataPath: string
 }
 
-export type AppTheme = 'light' | 'dark'
+export type AppTheme = 'light' | 'dark' | 'system'
 
 export type AppUpdateCheckResult = {
   status: 'unsupported' | 'available' | 'not_available' | 'error'
@@ -538,11 +575,14 @@ export type OneMailApi = {
   }
   notifications: {
     status: () => Promise<NotificationStatus>
+    test: () => Promise<void>
     onNewMail: (callback: (notification: NewMailNotification) => void) => () => void
   }
   settings: {
     get: () => Promise<AppSettings>
     update: (input: SettingsUpdateInput) => Promise<AppSettings>
+    importBackgroundImage: (filePath: string) => Promise<{ path: string; filename: string }>
+    detectShortcutConflict: (keyString: string, actionId: string) => Promise<string | null>
     getBackupSync: () => Promise<BackupSyncSettings>
     updateBackupSync: (input: BackupSyncSettings) => Promise<BackupSyncSettings>
     testBackupSync: (input: BackupSyncSettings) => Promise<BackupSyncTestResult>

@@ -15,10 +15,15 @@ import {
   RefreshCcw,
   Save,
   ShieldCheck,
-  Upload
+  Upload,
+  Palette,
+  Keyboard,
+  Languages as TranslateIcon,
+  ShieldAlert,
+  Bell
 } from 'lucide-react'
 import * as React from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch, FormProvider } from 'react-hook-form'
 import { z } from 'zod'
 
 import {
@@ -37,10 +42,13 @@ import {
 import { getBackupSyncSettingsKey } from '@renderer/components/backup/backup-sync-draft'
 import { BackupSyncFields } from '@renderer/components/backup/backup-sync-fields'
 import { ResponsiveDialog } from '@renderer/components/responsive-dialog'
+import { AppearanceSettings } from './appearance-settings'
+import { ShortcutsSettings } from './shortcuts-settings'
+import { TranslateSettings } from './translate-settings'
+import { PrivacySettings } from './privacy-settings'
+import { NotificationSettings } from './notification-settings'
 import { Button } from '@renderer/components/ui/button'
 import {
-  Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -59,6 +67,12 @@ import { Switch } from '@renderer/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/alert'
 import type {
   AppSettings,
+  AppTheme,
+  BackgroundImageSettings,
+  MenuDisplayMode,
+  ShortcutBinding,
+  TranslateProvider,
+  PrivacyMode,
   AppUpdateStatus,
   BackupImportResult,
   BackupImportSource,
@@ -71,6 +85,8 @@ import { cn } from '@renderer/lib/utils'
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
 import { ONEMAIL_HOMEPAGE_URL, hasAvailableUpdate } from '@renderer/lib/update-status'
 
+import { SettingRow } from './setting-row'
+
 type SettingsDialogProps = {
   open: boolean
   settings: AppSettings | null
@@ -82,7 +98,15 @@ type SettingsDialogProps = {
   onImported?: () => Promise<void> | void
 }
 
-type SettingsSection = 'general' | 'backup' | 'about'
+type SettingsSection =
+  | 'general'
+  | 'appearance'
+  | 'shortcuts'
+  | 'translate'
+  | 'privacy'
+  | 'notification'
+  | 'backup'
+  | 'about'
 type BackupPending =
   | 'export'
   | 'import'
@@ -98,12 +122,24 @@ type BackupMessage = {
 
 const AUTO_SAVE_DELAY_MS = 350
 
-type SettingsFormValues = {
+export type SettingsFormValues = {
   syncIntervalMinutes: number
   syncWindowDays: number
   openAtLogin: boolean
   externalImagesBlocked: boolean
   locale: 'zh-CN' | 'en-US'
+  theme: AppTheme
+  backgroundImage?: BackgroundImageSettings
+  contextMenuEnabled: boolean
+  contextMenuOptions: string[]
+  menuDisplayMode: MenuDisplayMode
+  shortcuts: ShortcutBinding[]
+  translateProvider: TranslateProvider
+  translateEndpoint?: string
+  translateApiKey?: string
+  privacyMode: PrivacyMode
+  notificationsEnabled: boolean
+  notificationSound?: string
 }
 
 const sections: Array<{
@@ -115,6 +151,31 @@ const sections: Array<{
     value: 'general',
     labelKey: 'settings.general',
     icon: RefreshCcw
+  },
+  {
+    value: 'appearance',
+    labelKey: 'settings.appearance',
+    icon: Palette
+  },
+  {
+    value: 'shortcuts',
+    labelKey: 'settings.shortcuts',
+    icon: Keyboard
+  },
+  {
+    value: 'translate',
+    labelKey: 'settings.translate',
+    icon: TranslateIcon
+  },
+  {
+    value: 'privacy',
+    labelKey: 'settings.privacy',
+    icon: ShieldAlert
+  },
+  {
+    value: 'notification',
+    labelKey: 'settings.notifications',
+    icon: Bell
   },
   {
     value: 'backup',
@@ -190,7 +251,19 @@ export function SettingsDialog({
             syncWindowDays: currentValues.syncWindowDays,
             openAtLogin: currentValues.openAtLogin,
             externalImagesBlocked: currentValues.externalImagesBlocked,
-            locale: currentValues.locale
+            locale: currentValues.locale,
+            theme: currentValues.theme,
+            backgroundImage: currentValues.backgroundImage,
+            contextMenuEnabled: currentValues.contextMenuEnabled,
+            contextMenuOptions: currentValues.contextMenuOptions,
+            menuDisplayMode: currentValues.menuDisplayMode,
+            shortcuts: currentValues.shortcuts,
+            translateProvider: currentValues.translateProvider,
+            translateEndpoint: currentValues.translateEndpoint,
+            translateApiKey: currentValues.translateApiKey,
+            privacyMode: currentValues.privacyMode,
+            notificationsEnabled: currentValues.notificationsEnabled,
+            notificationSound: currentValues.notificationSound
           })
           lastSavedValuesRef.current = currentValues
         } catch (submitError) {
@@ -439,25 +512,37 @@ export function SettingsDialog({
           </nav>
 
           <div className="h-full min-h-0 overflow-auto">
-            {section === 'general' ? (
-              <GeneralSettingsForm form={form} error={error} />
-            ) : section === 'backup' ? (
-              <BackupSettings
-                key={getBackupSyncSettingsKey(backupSyncSettings)}
-                pending={backupPending}
-                message={backupMessage}
-                error={backupError}
-                syncSettings={backupSyncSettings}
-                onExport={handleExport}
-                onImport={handleImport}
-                onSaveSync={handleSaveBackupSync}
-                onTestSync={handleTestBackupSync}
-                onUploadSync={handleUploadBackupSync}
-                onDownloadSync={handleDownloadBackupSync}
-              />
-            ) : (
-              <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
-            )}
+            <FormProvider {...form}>
+                {section === 'general' ? (
+                  <GeneralSettingsForm form={form} error={error} />
+                ) : section === 'appearance' ? (
+                  <AppearanceSettings />
+                ) : section === 'shortcuts' ? (
+                  <ShortcutsSettings />
+                ) : section === 'translate' ? (
+                  <TranslateSettings />
+                ) : section === 'privacy' ? (
+                  <PrivacySettings />
+                ) : section === 'notification' ? (
+                  <NotificationSettings />
+                ) : section === 'backup' ? (
+                  <BackupSettings
+                    key={getBackupSyncSettingsKey(backupSyncSettings)}
+                    pending={backupPending}
+                    message={backupMessage}
+                    error={backupError}
+                    syncSettings={backupSyncSettings}
+                    onExport={handleExport}
+                    onImport={handleImport}
+                    onSaveSync={handleSaveBackupSync}
+                    onTestSync={handleTestBackupSync}
+                    onUploadSync={handleUploadBackupSync}
+                    onDownloadSync={handleDownloadBackupSync}
+                  />
+                ) : (
+                  <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
+                )}
+              </FormProvider>
           </div>
         </div>
       </ResponsiveDialog>
@@ -843,40 +928,6 @@ function BackupMessageView({ message }: { message: BackupMessage }): React.JSX.E
   )
 }
 
-function SettingRow({
-  icon: Icon,
-  title,
-  description,
-  control,
-  error,
-  invalid = false
-}: {
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
-  title: string
-  description: React.ReactNode
-  control?: React.ReactNode
-  error?: string
-  invalid?: boolean
-}): React.JSX.Element {
-  return (
-    <Field data-invalid={invalid || undefined}>
-      <div className="grid gap-2 rounded-md border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <div className="flex min-w-0 gap-2.5">
-          <div className="mt-px flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground [&_svg]:size-3.5">
-            <Icon aria-hidden="true" />
-          </div>
-          <FieldContent>
-            <FieldLabel className="text-xs">{title}</FieldLabel>
-            <FieldDescription className="text-xs leading-snug">{description}</FieldDescription>
-            <FieldError className="text-xs">{error}</FieldError>
-          </FieldContent>
-        </div>
-        {control ? <div className="flex justify-start sm:justify-end">{control}</div> : null}
-      </div>
-    </Field>
-  )
-}
-
 function BackupActionButton({
   icon: Icon,
   title,
@@ -930,7 +981,35 @@ function createSettingsSchema(t: (key: TranslationKey) => string) {
       .max(3650, t('settings.syncWindow.errorMax')),
     openAtLogin: z.boolean(),
     externalImagesBlocked: z.boolean(),
-    locale: z.enum(['zh-CN', 'en-US'])
+    locale: z.enum(['zh-CN', 'en-US']),
+    theme: z.enum(['light', 'dark', 'system']),
+    backgroundImage: z
+      .object({
+        path: z.string(),
+        filename: z.string(),
+        fit: z.enum(['cover', 'contain', 'tile']),
+        opacity: z.number().min(0).max(1)
+      })
+      .optional(),
+    contextMenuEnabled: z.boolean(),
+    contextMenuOptions: z.array(z.string()),
+    menuDisplayMode: z.enum(['hover', 'click', 'always']),
+
+    shortcuts: z.array(
+      z.object({
+        actionId: z.string(),
+        keys: z.string()
+      })
+    ),
+
+    translateProvider: z.enum(['deeplx', 'llm']),
+    translateEndpoint: z.string().optional(),
+    translateApiKey: z.string().optional(),
+
+    privacyMode: z.enum(['strict', 'medium', 'loose', 'off']),
+
+    notificationsEnabled: z.boolean(),
+    notificationSound: z.string().optional()
   })
 }
 
@@ -940,7 +1019,24 @@ function toFormValues(settings: AppSettings | null): SettingsFormValues {
     syncWindowDays: settings?.syncWindowDays ?? 90,
     openAtLogin: settings?.openAtLogin === true,
     externalImagesBlocked: settings?.externalImagesBlocked !== false,
-    locale: settings?.locale === 'en-US' ? 'en-US' : 'zh-CN'
+    locale: settings?.locale === 'en-US' ? 'en-US' : 'zh-CN',
+
+    theme: settings?.theme ?? 'light',
+    backgroundImage: settings?.backgroundImage,
+    contextMenuEnabled: settings?.contextMenuEnabled ?? true,
+    contextMenuOptions: settings?.contextMenuOptions ?? [],
+    menuDisplayMode: settings?.menuDisplayMode ?? 'hover',
+
+    shortcuts: settings?.shortcuts ?? [],
+
+    translateProvider: settings?.translateProvider ?? 'deeplx',
+    translateEndpoint: settings?.translateEndpoint,
+    translateApiKey: settings?.translateApiKey,
+
+    privacyMode: settings?.privacyMode ?? 'medium',
+
+    notificationsEnabled: settings?.notificationsEnabled ?? true,
+    notificationSound: settings?.notificationSound
   }
 }
 
@@ -950,6 +1046,18 @@ function areSettingsEqual(first: SettingsFormValues, second: SettingsFormValues)
     first.syncWindowDays === second.syncWindowDays &&
     first.openAtLogin === second.openAtLogin &&
     first.externalImagesBlocked === second.externalImagesBlocked &&
-    first.locale === second.locale
+    first.locale === second.locale &&
+    first.theme === second.theme &&
+    first.contextMenuEnabled === second.contextMenuEnabled &&
+    first.menuDisplayMode === second.menuDisplayMode &&
+    first.translateProvider === second.translateProvider &&
+    first.translateEndpoint === second.translateEndpoint &&
+    first.translateApiKey === second.translateApiKey &&
+    first.privacyMode === second.privacyMode &&
+    first.notificationsEnabled === second.notificationsEnabled &&
+    first.notificationSound === second.notificationSound &&
+    JSON.stringify(first.backgroundImage) === JSON.stringify(second.backgroundImage) &&
+    JSON.stringify(first.contextMenuOptions) === JSON.stringify(second.contextMenuOptions) &&
+    JSON.stringify(first.shortcuts) === JSON.stringify(second.shortcuts)
   )
 }

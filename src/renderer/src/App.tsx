@@ -1,10 +1,88 @@
 import { RouterProvider } from 'react-router/dom'
+import * as React from 'react'
 
 import { appRouter } from './app/router'
 import { I18nProvider } from './lib/i18n'
 import { Toaster } from './components/ui/sonner'
+import { useSettingsStore } from './stores/use-settings-store'
 
 function App(): React.JSX.Element {
+  const settings = useSettingsStore(state => state.settings)
+  const loadSettings = useSettingsStore(state => state.actions.loadSettings)
+
+  React.useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
+
+  React.useEffect(() => {
+    if (!settings) return
+
+    const applyDomTheme = () => {
+      const root = document.documentElement
+      root.classList.remove('light', 'dark')
+      
+      let domTheme = settings.theme
+      if (settings.theme === 'system') {
+        domTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+      
+      root.classList.add(domTheme)
+      root.style.colorScheme = domTheme
+      
+      if (settings.theme === 'system') {
+        window.localStorage.removeItem('theme')
+      } else {
+        window.localStorage.setItem('theme', settings.theme)
+      }
+      
+      void window.api?.system?.setTitleBarTheme?.(domTheme)
+    }
+
+    applyDomTheme()
+
+    if (settings.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      mediaQuery.addEventListener('change', applyDomTheme)
+      return () => mediaQuery.removeEventListener('change', applyDomTheme)
+    }
+    return undefined
+  }, [settings?.theme])
+
+  React.useEffect(() => {
+    if (!settings) return
+
+    const root = document.documentElement
+    if (settings.backgroundImage?.path) {
+      root.style.setProperty('--bg-image', `url(${settings.backgroundImage.path})`)
+      root.style.setProperty('--bg-opacity', settings.backgroundImage.opacity.toString())
+      
+      let bgSize = 'cover'
+      let bgRepeat = 'no-repeat'
+      
+      switch (settings.backgroundImage.fit) {
+        case 'contain':
+          bgSize = 'contain'
+          break
+        case 'tile':
+          bgSize = 'auto'
+          bgRepeat = 'repeat'
+          break
+        case 'cover':
+        default:
+          bgSize = 'cover'
+          break
+      }
+      
+      root.style.setProperty('--bg-size', bgSize)
+      root.style.setProperty('--bg-repeat', bgRepeat)
+    } else {
+      root.style.removeProperty('--bg-image')
+      root.style.removeProperty('--bg-opacity')
+      root.style.removeProperty('--bg-size')
+      root.style.removeProperty('--bg-repeat')
+    }
+  }, [settings?.backgroundImage])
+
   return (
     <I18nProvider>
       <RouterProvider router={appRouter} />

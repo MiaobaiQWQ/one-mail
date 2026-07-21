@@ -8,7 +8,27 @@ const defaultSettings: AppSettings = {
   syncWindowDays: 90,
   openAtLogin: false,
   externalImagesBlocked: true,
-  locale: 'zh-CN'
+  locale: 'zh-CN',
+  theme: 'system',
+  contextMenuEnabled: true,
+  contextMenuOptions: [],
+  menuDisplayMode: 'hover',
+  shortcuts: [
+    { actionId: 'sync', keys: 'Ctrl+R' },
+    { actionId: 'search', keys: 'Ctrl+F' },
+    { actionId: 'next-message', keys: 'J' },
+    { actionId: 'prev-message', keys: 'K' },
+    { actionId: 'compose', keys: 'C' },
+    { actionId: 'reply', keys: 'R' },
+    { actionId: 'reply-all', keys: 'A' },
+    { actionId: 'forward', keys: 'F' },
+    { actionId: 'archive', keys: 'E' },
+    { actionId: 'delete', keys: 'Backspace' },
+    { actionId: 'translate-selection', keys: 'Ctrl+T' }
+  ],
+  translateProvider: 'deeplx',
+  privacyMode: 'strict',
+  notificationsEnabled: true
 }
 
 const settingsDefinition = {
@@ -17,6 +37,18 @@ const settingsDefinition = {
   openAtLogin: { key: 'open_at_login', type: 'boolean' },
   externalImagesBlocked: { key: 'external_images_blocked', type: 'boolean' },
   locale: { key: 'locale', type: 'string' },
+  theme: { key: 'theme', type: 'string' },
+  backgroundImage: { key: 'background_image', type: 'json' },
+  contextMenuEnabled: { key: 'context_menu_enabled', type: 'boolean' },
+  contextMenuOptions: { key: 'context_menu_options', type: 'json' },
+  menuDisplayMode: { key: 'menu_display_mode', type: 'string' },
+  shortcuts: { key: 'shortcuts', type: 'json' },
+  translateProvider: { key: 'translate_provider', type: 'string' },
+  translateEndpoint: { key: 'translate_endpoint', type: 'string' },
+  translateApiKey: { key: 'translate_api_key', type: 'string' },
+  privacyMode: { key: 'privacy_mode', type: 'string' },
+  notificationsEnabled: { key: 'notifications_enabled', type: 'boolean' },
+  notificationSound: { key: 'notification_sound', type: 'string' },
   lastAttachmentDownloadDir: { key: 'last_attachment_download_dir', type: 'string' },
   backupSyncSettings: { key: 'backup_sync_settings', type: 'json' }
 } as const
@@ -57,7 +89,19 @@ export function getSettings(): AppSettings {
       byKey.get(settingsDefinition.externalImagesBlocked.key),
       true
     ),
-    locale: byKey.get(settingsDefinition.locale.key)?.setting_value ?? defaultSettings.locale
+    locale: byKey.get(settingsDefinition.locale.key)?.setting_value ?? defaultSettings.locale,
+    theme: (byKey.get(settingsDefinition.theme.key)?.setting_value as AppSettings['theme']) ?? defaultSettings.theme,
+    backgroundImage: readJson(byKey.get(settingsDefinition.backgroundImage.key)),
+    contextMenuEnabled: readBoolean(byKey.get(settingsDefinition.contextMenuEnabled.key), defaultSettings.contextMenuEnabled),
+    contextMenuOptions: readJson(byKey.get(settingsDefinition.contextMenuOptions.key)) ?? defaultSettings.contextMenuOptions,
+    menuDisplayMode: (byKey.get(settingsDefinition.menuDisplayMode.key)?.setting_value as AppSettings['menuDisplayMode']) ?? defaultSettings.menuDisplayMode,
+    shortcuts: readJson(byKey.get(settingsDefinition.shortcuts.key)) ?? defaultSettings.shortcuts,
+    translateProvider: (byKey.get(settingsDefinition.translateProvider.key)?.setting_value as AppSettings['translateProvider']) ?? defaultSettings.translateProvider,
+    translateEndpoint: byKey.get(settingsDefinition.translateEndpoint.key)?.setting_value,
+    translateApiKey: byKey.get(settingsDefinition.translateApiKey.key)?.setting_value,
+    privacyMode: (byKey.get(settingsDefinition.privacyMode.key)?.setting_value as AppSettings['privacyMode']) ?? defaultSettings.privacyMode,
+    notificationsEnabled: readBoolean(byKey.get(settingsDefinition.notificationsEnabled.key), defaultSettings.notificationsEnabled),
+    notificationSound: byKey.get(settingsDefinition.notificationSound.key)?.setting_value
   }
 }
 
@@ -90,6 +134,35 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
     settingsDefinition.externalImagesBlocked.type
   )
   writeSetting(settingsDefinition.locale.key, next.locale, settingsDefinition.locale.type)
+  
+  writeSetting(settingsDefinition.theme.key, next.theme, settingsDefinition.theme.type)
+  if (next.backgroundImage) {
+    writeSetting(settingsDefinition.backgroundImage.key, JSON.stringify(next.backgroundImage), settingsDefinition.backgroundImage.type)
+  } else {
+    deleteSetting(settingsDefinition.backgroundImage.key)
+  }
+  writeSetting(settingsDefinition.contextMenuEnabled.key, next.contextMenuEnabled ? '1' : '0', settingsDefinition.contextMenuEnabled.type)
+  writeSetting(settingsDefinition.contextMenuOptions.key, JSON.stringify(next.contextMenuOptions), settingsDefinition.contextMenuOptions.type)
+  writeSetting(settingsDefinition.menuDisplayMode.key, next.menuDisplayMode, settingsDefinition.menuDisplayMode.type)
+  writeSetting(settingsDefinition.shortcuts.key, JSON.stringify(next.shortcuts), settingsDefinition.shortcuts.type)
+  writeSetting(settingsDefinition.translateProvider.key, next.translateProvider, settingsDefinition.translateProvider.type)
+  if (next.translateEndpoint) {
+    writeSetting(settingsDefinition.translateEndpoint.key, next.translateEndpoint, settingsDefinition.translateEndpoint.type)
+  } else {
+    deleteSetting(settingsDefinition.translateEndpoint.key)
+  }
+  if (next.translateApiKey) {
+    writeSetting(settingsDefinition.translateApiKey.key, next.translateApiKey, settingsDefinition.translateApiKey.type)
+  } else {
+    deleteSetting(settingsDefinition.translateApiKey.key)
+  }
+  writeSetting(settingsDefinition.privacyMode.key, next.privacyMode, settingsDefinition.privacyMode.type)
+  writeSetting(settingsDefinition.notificationsEnabled.key, next.notificationsEnabled ? '1' : '0', settingsDefinition.notificationsEnabled.type)
+  if (next.notificationSound) {
+    writeSetting(settingsDefinition.notificationSound.key, next.notificationSound, settingsDefinition.notificationSound.type)
+  } else {
+    deleteSetting(settingsDefinition.notificationSound.key)
+  }
 
   return getSettings()
 }
@@ -161,6 +234,46 @@ function ensureDefaultSettings(): void {
     defaultSettings.locale,
     settingsDefinition.locale.type
   )
+  updateMissingSetting(
+    settingsDefinition.theme.key,
+    defaultSettings.theme,
+    settingsDefinition.theme.type
+  )
+  updateMissingSetting(
+    settingsDefinition.contextMenuEnabled.key,
+    defaultSettings.contextMenuEnabled ? '1' : '0',
+    settingsDefinition.contextMenuEnabled.type
+  )
+  updateMissingSetting(
+    settingsDefinition.contextMenuOptions.key,
+    JSON.stringify(defaultSettings.contextMenuOptions),
+    settingsDefinition.contextMenuOptions.type
+  )
+  updateMissingSetting(
+    settingsDefinition.menuDisplayMode.key,
+    defaultSettings.menuDisplayMode,
+    settingsDefinition.menuDisplayMode.type
+  )
+  updateMissingSetting(
+    settingsDefinition.shortcuts.key,
+    JSON.stringify(defaultSettings.shortcuts),
+    settingsDefinition.shortcuts.type
+  )
+  updateMissingSetting(
+    settingsDefinition.translateProvider.key,
+    defaultSettings.translateProvider,
+    settingsDefinition.translateProvider.type
+  )
+  updateMissingSetting(
+    settingsDefinition.privacyMode.key,
+    defaultSettings.privacyMode,
+    settingsDefinition.privacyMode.type
+  )
+  updateMissingSetting(
+    settingsDefinition.notificationsEnabled.key,
+    defaultSettings.notificationsEnabled ? '1' : '0',
+    settingsDefinition.notificationsEnabled.type
+  )
 }
 
 function updateMissingSetting(key: string, value: string, valueType: string): void {
@@ -199,6 +312,12 @@ function writeSetting(key: string, value: string, valueType: string): void {
       `
     )
     .run({ key, value, valueType })
+}
+
+function deleteSetting(key: string): void {
+  getDatabase()
+    .prepare(`DELETE FROM onemail_app_settings WHERE setting_key = :key`)
+    .run({ key })
 }
 
 function readBackupSyncSettings(): BackupSyncSettings {
@@ -391,4 +510,13 @@ function readNumber(row: SettingRow | undefined, fallback: number): number {
 function readBoolean(row: SettingRow | undefined, fallback: boolean): boolean {
   if (!row) return fallback
   return row.setting_value === '1' || row.setting_value === 'true'
+}
+
+function readJson<T>(row: SettingRow | undefined): T | undefined {
+  if (!row || !row.setting_value) return undefined
+  try {
+    return JSON.parse(row.setting_value) as T
+  } catch {
+    return undefined
+  }
 }

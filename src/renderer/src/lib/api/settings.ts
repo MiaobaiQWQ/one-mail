@@ -31,6 +31,14 @@ export async function saveSettings(input: SettingsUpdateInput): Promise<AppSetti
   return window.api.settings.update(input)
 }
 
+export async function importBackgroundImage(filePath: string): Promise<{ path: string; filename: string }> {
+  return window.api.settings.importBackgroundImage(filePath)
+}
+
+export async function detectShortcutConflict(keyString: string, actionId: string): Promise<string | null> {
+  return window.api.settings.detectShortcutConflict(keyString, actionId)
+}
+
 export async function exportSqlBackup(): Promise<string | null> {
   return window.api.settings.exportSql()
 }
@@ -86,6 +94,10 @@ export async function revealPathInFileManager(path: string): Promise<boolean> {
 
 export async function openExternalUrl(url: string): Promise<boolean> {
   return window.api.system.openExternal(url)
+}
+
+export async function testDesktopNotification(): Promise<void> {
+  return window.api.notifications.test()
 }
 
 export async function checkForAppUpdates(): Promise<AppUpdateCheckResult> {
