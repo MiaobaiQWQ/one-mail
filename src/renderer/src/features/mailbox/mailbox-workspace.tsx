@@ -957,7 +957,7 @@ export function MailboxWorkspace(): React.JSX.Element {
                   recipientAddress={selectedMessageAccount?.address ?? selectedAccount.address}
                   loading={!selectedMessage.detailLoaded || loadingMessageId === selectedMessage.id}
                   loadingBody={loadingBodyMessageId === selectedMessage.id}
-                  externalImagesBlocked={settings?.externalImagesBlocked ?? true}
+                  privacyMode={settings?.privacyMode ?? 'strict'}
                   downloadingAttachmentIds={downloadingAttachmentIds}
                   actionPending={composerPending}
                   deleting={deletingMessageIds.has(selectedMessage.id)}

@@ -57,7 +57,7 @@ type MailReaderProps = {
   recipientAddress: string
   loading?: boolean
   loadingBody?: boolean
-  externalImagesBlocked?: boolean
+  privacyMode?: 'strict' | 'medium' | 'loose' | 'off'
   downloadingAttachmentIds?: Set<number>
   actionPending?: boolean
   deleting?: boolean
@@ -73,7 +73,7 @@ export function MailReader({
   recipientAddress,
   loading = false,
   loadingBody = false,
-  externalImagesBlocked = true,
+  privacyMode = 'strict',
   downloadingAttachmentIds,
   actionPending = false,
   deleting = false,
@@ -83,6 +83,9 @@ export function MailReader({
   onForward,
   onDelete
 }: MailReaderProps): React.JSX.Element {
+  // 根据隐私模式决定是否默认阻止外部图片
+  // strict 和 medium 阻止，loose 和 off 允许
+  const externalImagesBlocked = privacyMode === 'strict' || privacyMode === 'medium';
   const { locale, t } = useI18n()
   const canShowHtml = Boolean(message.html)
   const hasLoadedBody = message.bodyLoaded || canShowHtml

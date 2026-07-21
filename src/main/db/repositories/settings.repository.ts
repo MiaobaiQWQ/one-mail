@@ -7,7 +7,6 @@ const defaultSettings: AppSettings = {
   syncIntervalMinutes: 15,
   syncWindowDays: 90,
   openAtLogin: false,
-  externalImagesBlocked: true,
   locale: 'zh-CN',
   theme: 'system',
   contextMenuEnabled: true,
@@ -35,7 +34,6 @@ const settingsDefinition = {
   syncIntervalMinutes: { key: 'sync_interval_minutes', type: 'number' },
   syncWindowDays: { key: 'sync_window_days', type: 'number' },
   openAtLogin: { key: 'open_at_login', type: 'boolean' },
-  externalImagesBlocked: { key: 'external_images_blocked', type: 'boolean' },
   locale: { key: 'locale', type: 'string' },
   theme: { key: 'theme', type: 'string' },
   backgroundImage: { key: 'background_image', type: 'json' },
@@ -85,10 +83,6 @@ export function getSettings(): AppSettings {
     syncIntervalMinutes: readNumber(byKey.get(settingsDefinition.syncIntervalMinutes.key), 15),
     syncWindowDays: readNumber(byKey.get(settingsDefinition.syncWindowDays.key), 90),
     openAtLogin: getOpenAtLogin(),
-    externalImagesBlocked: readBoolean(
-      byKey.get(settingsDefinition.externalImagesBlocked.key),
-      true
-    ),
     locale: byKey.get(settingsDefinition.locale.key)?.setting_value ?? defaultSettings.locale,
     theme: (byKey.get(settingsDefinition.theme.key)?.setting_value as AppSettings['theme']) ?? defaultSettings.theme,
     backgroundImage: readJson(byKey.get(settingsDefinition.backgroundImage.key)),
@@ -127,11 +121,6 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
     settingsDefinition.openAtLogin.key,
     next.openAtLogin ? '1' : '0',
     settingsDefinition.openAtLogin.type
-  )
-  writeSetting(
-    settingsDefinition.externalImagesBlocked.key,
-    next.externalImagesBlocked ? '1' : '0',
-    settingsDefinition.externalImagesBlocked.type
   )
   writeSetting(settingsDefinition.locale.key, next.locale, settingsDefinition.locale.type)
   
@@ -218,11 +207,6 @@ function ensureDefaultSettings(): void {
     settingsDefinition.syncWindowDays.key,
     String(defaultSettings.syncWindowDays),
     settingsDefinition.syncWindowDays.type
-  )
-  updateMissingSetting(
-    settingsDefinition.externalImagesBlocked.key,
-    defaultSettings.externalImagesBlocked ? '1' : '0',
-    settingsDefinition.externalImagesBlocked.type
   )
   updateMissingSetting(
     settingsDefinition.openAtLogin.key,

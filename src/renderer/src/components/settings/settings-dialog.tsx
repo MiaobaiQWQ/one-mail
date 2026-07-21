@@ -20,7 +20,8 @@ import {
   Keyboard,
   Languages as TranslateIcon,
   ShieldAlert,
-  Bell
+  Bell,
+  X
 } from 'lucide-react'
 import * as React from 'react'
 import { Controller, useForm, useWatch, FormProvider } from 'react-hook-form'
@@ -126,7 +127,6 @@ export type SettingsFormValues = {
   syncIntervalMinutes: number
   syncWindowDays: number
   openAtLogin: boolean
-  externalImagesBlocked: boolean
   locale: 'zh-CN' | 'en-US'
   theme: AppTheme
   backgroundImage?: BackgroundImageSettings
@@ -189,6 +189,19 @@ const sections: Array<{
   }
 ]
 
+function useMediaQuery(query: string): boolean {
+  return React.useSyncExternalStore(
+    (onStoreChange) => {
+      const media = window.matchMedia(query)
+      media.addEventListener('change', onStoreChange)
+
+      return () => media.removeEventListener('change', onStoreChange)
+    },
+    () => window.matchMedia(query).matches,
+    () => false
+  )
+}
+
 export function SettingsDialog({
   open,
   settings,
@@ -227,6 +240,64 @@ export function SettingsDialog({
     mode: 'onChange'
   })
   const watchedValues = useWatch({ control: form.control })
+  
+  // 拖拽状态
+  const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const dragStartRef = React.useRef<{ x: number; y: number } | null>(null)
+  const initialPositionRef = React.useRef<{ x: number; y: number } | null>(null)
+  const dialogRef = React.useRef<HTMLDivElement | null>(null)
+  const isDesktop = useMediaQuery('(min-width: 768px)')
+
+  // 拖拽事件处理
+  const handleMouseDown = React.useCallback((event: React.MouseEvent) => {
+    if (event.target instanceof HTMLButtonElement || 
+        event.target instanceof SVGElement ||
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLSelectElement) {
+      return
+    }
+    setIsDragging(true)
+    dragStartRef.current = { x: event.clientX, y: event.clientY }
+    
+    // 获取当前弹窗的实际位置作为起点
+    if (position) {
+      initialPositionRef.current = position
+    } else if (dialogRef.current) {
+      const rect = dialogRef.current.getBoundingClientRect()
+      initialPositionRef.current = { x: rect.left, y: rect.top }
+    } else {
+      initialPositionRef.current = { x: 0, y: 0 }
+    }
+  }, [position])
+
+  React.useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!dragStartRef.current || !initialPositionRef.current) return
+      const deltaX = event.clientX - dragStartRef.current.x
+      const deltaY = event.clientY - dragStartRef.current.y
+      setPosition({
+        x: initialPositionRef.current.x + deltaX,
+        y: initialPositionRef.current.y + deltaY
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      dragStartRef.current = null
+      initialPositionRef.current = null
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging])
 
   const saveSettingsValues = React.useCallback(
     async (values: SettingsFormValues): Promise<void> => {
@@ -250,7 +321,6 @@ export function SettingsDialog({
             syncIntervalMinutes: currentValues.syncIntervalMinutes,
             syncWindowDays: currentValues.syncWindowDays,
             openAtLogin: currentValues.openAtLogin,
-            externalImagesBlocked: currentValues.externalImagesBlocked,
             locale: currentValues.locale,
             theme: currentValues.theme,
             backgroundImage: currentValues.backgroundImage,
@@ -474,78 +544,189 @@ export function SettingsDialog({
     }
   }
 
+  // 重置位置
+  React.useEffect(() => {
+    if (!open) {
+      setPosition(null)
+    }
+  }, [open])
+
+  // 桌面端内容（可拖拽、非模态）
+  const DesktopContent = (
+    <div
+      ref={dialogRef}
+      className={cn(
+        'fixed z-50 grid w-[min(calc(100%-2rem),672px)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-lg border bg-background shadow-lg',
+        'h-[min(560px,82vh)]'
+      )}
+      style={{
+        left: position ? position.x : '50%',
+        top: position ? position.y : '50%',
+        transform: position 
+          ? undefined
+          : 'translate(-50%, -50%)',
+        cursor: isDragging ? 'grabbing' : undefined
+      }}
+    >
+      {/* 拖拽手柄和标题栏 */}
+      <div
+        className="shrink-0 flex cursor-grab items-center justify-between border-b bg-muted/30 px-4 py-3 pr-3 select-none"
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        onMouseDown={handleMouseDown}
+      >
+        <h2 className="text-sm font-semibold">{t('settings.title')}</h2>
+        <button
+          type="button"
+          className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+          aria-label="Close"
+          onClick={() => handleOpenChange(false)}
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+
+      {/* 主体内容 */}
+      <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:grid-cols-[136px_minmax(0,1fr)] md:grid-rows-1">
+        <nav className="min-h-0 shrink-0 border-b bg-muted/30 p-1.5 md:border-r md:border-b-0 md:p-2">
+          <div className="flex gap-1 md:flex-col">
+            {sections.map((item) => {
+              const Icon = item.icon
+              const active = section === item.value
+
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={cn(
+                    'flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:w-full md:flex-none [&_svg]:size-3.5',
+                    active
+                      ? 'bg-background text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
+                  )}
+                  onClick={() => setSection(item.value)}
+                >
+                  <Icon className="shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 truncate font-medium">{t(item.labelKey)}</span>
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+
+        <div className="h-full min-h-0 overflow-auto">
+          <FormProvider {...form}>
+              {section === 'general' ? (
+                <GeneralSettingsForm form={form} error={error} />
+              ) : section === 'appearance' ? (
+                <AppearanceSettings />
+              ) : section === 'shortcuts' ? (
+                <ShortcutsSettings />
+              ) : section === 'translate' ? (
+                <TranslateSettings />
+              ) : section === 'privacy' ? (
+                <PrivacySettings />
+              ) : section === 'notification' ? (
+                <NotificationSettings />
+              ) : section === 'backup' ? (
+                <BackupSettings
+                  key={getBackupSyncSettingsKey(backupSyncSettings)}
+                  pending={backupPending}
+                  message={backupMessage}
+                  error={backupError}
+                  syncSettings={backupSyncSettings}
+                  onExport={handleExport}
+                  onImport={handleImport}
+                  onSaveSync={handleSaveBackupSync}
+                  onTestSync={handleTestBackupSync}
+                  onUploadSync={handleUploadBackupSync}
+                  onDownloadSync={handleDownloadBackupSync}
+                />
+              ) : (
+                <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
+              )}
+            </FormProvider>
+        </div>
+      </div>
+    </div>
+  )
+
+  // 移动端内容（Drawer）
+  const MobileContent = (
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={t('settings.title')}
+      contentClassName="h-[min(560px,82vh)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-2xl"
+      headerClassName="shrink-0 border-b px-4 py-3 pr-12 [&_[data-slot=dialog-title]]:text-sm! [&_[data-slot=drawer-title]]:text-sm!"
+      bodyClassName="h-full min-h-0 overflow-hidden"
+    >
+      <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:grid-cols-[136px_minmax(0,1fr)] md:grid-rows-1">
+        <nav className="min-h-0 shrink-0 border-b bg-muted/30 p-1.5 md:border-r md:border-b-0 md:p-2">
+          <div className="flex gap-1 md:flex-col">
+            {sections.map((item) => {
+              const Icon = item.icon
+              const active = section === item.value
+
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={cn(
+                    'flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:w-full md:flex-none [&_svg]:size-3.5',
+                    active
+                      ? 'bg-background text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
+                  )}
+                  onClick={() => setSection(item.value)}
+                >
+                  <Icon className="shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 truncate font-medium">{t(item.labelKey)}</span>
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+
+        <div className="h-full min-h-0 overflow-auto">
+          <FormProvider {...form}>
+              {section === 'general' ? (
+                <GeneralSettingsForm form={form} error={error} />
+              ) : section === 'appearance' ? (
+                <AppearanceSettings />
+              ) : section === 'shortcuts' ? (
+                <ShortcutsSettings />
+              ) : section === 'translate' ? (
+                <TranslateSettings />
+              ) : section === 'privacy' ? (
+                <PrivacySettings />
+              ) : section === 'notification' ? (
+                <NotificationSettings />
+              ) : section === 'backup' ? (
+                <BackupSettings
+                  key={getBackupSyncSettingsKey(backupSyncSettings)}
+                  pending={backupPending}
+                  message={backupMessage}
+                  error={backupError}
+                  syncSettings={backupSyncSettings}
+                  onExport={handleExport}
+                  onImport={handleImport}
+                  onSaveSync={handleSaveBackupSync}
+                  onTestSync={handleTestBackupSync}
+                  onUploadSync={handleUploadBackupSync}
+                  onDownloadSync={handleDownloadBackupSync}
+                />
+              ) : (
+                <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
+              )}
+            </FormProvider>
+        </div>
+      </div>
+    </ResponsiveDialog>
+  )
+
   return (
     <>
-      <ResponsiveDialog
-        open={open}
-        onOpenChange={handleOpenChange}
-        title={t('settings.title')}
-        contentClassName="h-[min(560px,82vh)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-2xl"
-        headerClassName="shrink-0 border-b px-4 py-3 pr-12 [&_[data-slot=dialog-title]]:text-sm! [&_[data-slot=drawer-title]]:text-sm!"
-        bodyClassName="h-full min-h-0 overflow-hidden"
-      >
-        <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:grid-cols-[136px_minmax(0,1fr)] md:grid-rows-1">
-          <nav className="min-h-0 shrink-0 border-b bg-muted/30 p-1.5 md:border-r md:border-b-0 md:p-2">
-            <div className="flex gap-1 md:flex-col">
-              {sections.map((item) => {
-                const Icon = item.icon
-                const active = section === item.value
-
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    className={cn(
-                      'flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:w-full md:flex-none [&_svg]:size-3.5',
-                      active
-                        ? 'bg-background text-foreground shadow-xs'
-                        : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
-                    )}
-                    onClick={() => setSection(item.value)}
-                  >
-                    <Icon className="shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 truncate font-medium">{t(item.labelKey)}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </nav>
-
-          <div className="h-full min-h-0 overflow-auto">
-            <FormProvider {...form}>
-                {section === 'general' ? (
-                  <GeneralSettingsForm form={form} error={error} />
-                ) : section === 'appearance' ? (
-                  <AppearanceSettings />
-                ) : section === 'shortcuts' ? (
-                  <ShortcutsSettings />
-                ) : section === 'translate' ? (
-                  <TranslateSettings />
-                ) : section === 'privacy' ? (
-                  <PrivacySettings />
-                ) : section === 'notification' ? (
-                  <NotificationSettings />
-                ) : section === 'backup' ? (
-                  <BackupSettings
-                    key={getBackupSyncSettingsKey(backupSyncSettings)}
-                    pending={backupPending}
-                    message={backupMessage}
-                    error={backupError}
-                    syncSettings={backupSyncSettings}
-                    onExport={handleExport}
-                    onImport={handleImport}
-                    onSaveSync={handleSaveBackupSync}
-                    onTestSync={handleTestBackupSync}
-                    onUploadSync={handleUploadBackupSync}
-                    onDownloadSync={handleDownloadBackupSync}
-                  />
-                ) : (
-                  <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
-                )}
-              </FormProvider>
-          </div>
-        </div>
-      </ResponsiveDialog>
+      {open && (isDesktop ? DesktopContent : MobileContent)}
 
       <BackupImportDialog
         open={backupImportDialogOpen}
@@ -630,26 +811,6 @@ function GeneralSettingsForm({
           }
           error={form.formState.errors.syncWindowDays?.message}
           invalid={Boolean(form.formState.errors.syncWindowDays)}
-        />
-
-        <Controller
-          control={form.control}
-          name="externalImagesBlocked"
-          render={({ field }) => (
-            <SettingRow
-              icon={ShieldCheck}
-              title={t('settings.externalContent.title')}
-              description={t('settings.externalContent.description')}
-              control={
-                <Switch
-                  id="external-images-blocked"
-                  size="sm"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              }
-            />
-          )}
         />
 
         <Controller
@@ -980,7 +1141,6 @@ function createSettingsSchema(t: (key: TranslationKey) => string) {
       .min(1, t('settings.syncWindow.errorMin'))
       .max(3650, t('settings.syncWindow.errorMax')),
     openAtLogin: z.boolean(),
-    externalImagesBlocked: z.boolean(),
     locale: z.enum(['zh-CN', 'en-US']),
     theme: z.enum(['light', 'dark', 'system']),
     backgroundImage: z
@@ -1018,7 +1178,6 @@ function toFormValues(settings: AppSettings | null): SettingsFormValues {
     syncIntervalMinutes: settings?.syncIntervalMinutes ?? 15,
     syncWindowDays: settings?.syncWindowDays ?? 90,
     openAtLogin: settings?.openAtLogin === true,
-    externalImagesBlocked: settings?.externalImagesBlocked !== false,
     locale: settings?.locale === 'en-US' ? 'en-US' : 'zh-CN',
 
     theme: settings?.theme ?? 'light',
@@ -1033,7 +1192,7 @@ function toFormValues(settings: AppSettings | null): SettingsFormValues {
     translateEndpoint: settings?.translateEndpoint,
     translateApiKey: settings?.translateApiKey,
 
-    privacyMode: settings?.privacyMode ?? 'medium',
+    privacyMode: settings?.privacyMode ?? 'strict',
 
     notificationsEnabled: settings?.notificationsEnabled ?? true,
     notificationSound: settings?.notificationSound
@@ -1045,7 +1204,6 @@ function areSettingsEqual(first: SettingsFormValues, second: SettingsFormValues)
     first.syncIntervalMinutes === second.syncIntervalMinutes &&
     first.syncWindowDays === second.syncWindowDays &&
     first.openAtLogin === second.openAtLogin &&
-    first.externalImagesBlocked === second.externalImagesBlocked &&
     first.locale === second.locale &&
     first.theme === second.theme &&
     first.contextMenuEnabled === second.contextMenuEnabled &&

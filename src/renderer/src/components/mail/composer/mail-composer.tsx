@@ -118,6 +118,12 @@ export function MailComposer({
   const [formState, setFormState] = React.useState<ComposerFormState>(() =>
     createFormState(draft, draftKey)
   )
+  // 拖拽状态
+  const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const dragStartRef = React.useRef<{ x: number; y: number } | null>(null)
+  const initialPositionRef = React.useRef<{ x: number; y: number } | null>(null)
+  const dialogRef = React.useRef<HTMLElement | null>(null)
   const form = formState.draftKey === draftKey ? formState : createFormState(draft, draftKey)
   const defaultAccount = sendAccounts.find(
     (account) => String(account.accountId) === form.accountId
@@ -242,21 +248,81 @@ export function MailComposer({
     setBccVisible(Boolean(draft?.bcc?.length))
   }, [draftKey, draft?.bcc?.length, draft?.cc?.length])
 
+  // 拖拽事件处理
+  const handleMouseDown = React.useCallback((event: React.MouseEvent) => {
+    if (event.target instanceof HTMLButtonElement || event.target instanceof SVGElement) {
+      return
+    }
+    setIsDragging(true)
+    dragStartRef.current = { x: event.clientX, y: event.clientY }
+    
+    // 获取当前弹窗的实际位置作为起点
+    if (position) {
+      initialPositionRef.current = position
+    } else if (dialogRef.current) {
+      const rect = dialogRef.current.getBoundingClientRect()
+      initialPositionRef.current = { x: rect.left, y: rect.top }
+    } else {
+      initialPositionRef.current = { x: 0, y: 0 }
+    }
+  }, [position])
+
+  React.useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!dragStartRef.current || !initialPositionRef.current) return
+      const deltaX = event.clientX - dragStartRef.current.x
+      const deltaY = event.clientY - dragStartRef.current.y
+      setPosition({
+        x: initialPositionRef.current.x + deltaX,
+        y: initialPositionRef.current.y + deltaY
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      dragStartRef.current = null
+      initialPositionRef.current = null
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging])
+
   if (!open) return <></>
 
   return (
     <TooltipProvider>
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="false"
         aria-labelledby="mail-composer-title"
         className={cn(
-          'app-no-drag fixed right-4 bottom-9 flex max-h-[calc(100vh-5rem)] w-[min(calc(100vw-2rem),38rem)] flex-col overflow-hidden rounded-t-lg border bg-background shadow-2xl',
+          'app-no-drag fixed flex max-h-[calc(100vh-5rem)] w-[min(calc(100vw-2rem),38rem)] flex-col overflow-hidden rounded-t-lg border bg-background shadow-2xl',
           expanded &&
-            'top-10 bottom-10 w-[min(calc(100vw-2rem),56rem)] sm:right-8 sm:w-[min(calc(100vw-4rem),56rem)]'
+            'w-[min(calc(100vw-2rem),56rem)] sm:w-[min(calc(100vw-4rem),56rem)]'
         )}
+        style={{
+          right: position ? undefined : '1rem',
+          bottom: position ? undefined : '2.25rem',
+          top: position ? position.y : (expanded ? '2.5rem' : undefined),
+          left: position ? position.x : undefined,
+          transform: position ? undefined : undefined,
+          cursor: isDragging ? 'grabbing' : undefined
+        }}
       >
-        <header className="flex h-10 shrink-0 items-center justify-between gap-3 bg-muted px-3 text-foreground">
+        <header 
+          className="flex h-10 shrink-0 items-center justify-between gap-3 bg-muted px-3 text-foreground cursor-grab select-none"
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+          onMouseDown={handleMouseDown}
+        >
           <div id="mail-composer-title" className="min-w-0 truncate text-sm font-medium">
             {t('mail.composer.newMessage')}
           </div>

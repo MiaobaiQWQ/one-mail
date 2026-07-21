@@ -65,7 +65,7 @@ describe('MailReader metadata', () => {
 })
 
 describe('MailReader remote content', () => {
-  it('shows full remote content automatically when remote blocking is disabled', async () => {
+  it('shows full remote content automatically when privacy mode is loose or off', async () => {
     const { container } = renderMailReader(
       <MailReader
         message={createMessage({
@@ -73,7 +73,7 @@ describe('MailReader remote content', () => {
           bodyLoaded: true
         })}
         recipientAddress="account@example.com"
-        externalImagesBlocked={false}
+        privacyMode="loose"
         onLoadBody={() => {}}
       />
     )
