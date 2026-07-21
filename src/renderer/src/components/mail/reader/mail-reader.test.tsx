@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { Message } from './types'
+import type { Message } from '../shared/types'
 import { MailReader } from './mail-reader'
 import { I18nProvider } from '@renderer/lib/i18n'
 

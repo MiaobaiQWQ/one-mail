@@ -1,4 +1,4 @@
-import type { Account, MailFilterTag, Message } from '@renderer/components/mail/types'
+import type { Account, MailFilterTag, Message } from '@renderer/components/mail/shared/types'
 
 export function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback

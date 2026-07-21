@@ -1,4 +1,4 @@
-import type { Account } from '@renderer/components/mail/types'
+import type { Account } from '@renderer/components/mail/shared/types'
 import type { TranslationKey } from '@renderer/lib/i18n'
 
 export type AccountWarningAction = 'edit' | 'retry' | 'delete' | 'reauthorize'

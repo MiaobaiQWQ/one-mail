@@ -27,8 +27,8 @@ import {
   X
 } from 'lucide-react'
 
-import { AddressInput } from '@renderer/components/mail/address-input'
-import type { Account } from '@renderer/components/mail/types'
+import { AddressInput } from '@renderer/components/mail/composer/address-input'
+import type { Account } from '@renderer/components/mail/shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@renderer/components/ui/field'
@@ -51,7 +51,7 @@ import {
 import { cn } from '@renderer/lib/utils'
 import { selectMailAttachments, type ComposeDraft, type SendMessageInput } from '@renderer/lib/api'
 import { useI18n } from '@renderer/lib/i18n'
-import type { MailAttachmentInput } from '../../../../shared/types'
+import type { MailAttachmentInput } from '../../../../../shared/types'
 
 const COMPOSER_ADDRESS_FIELD_CLASS =
   'min-h-10 items-center gap-3 border-b px-4 py-1.5 *:data-[slot=field-label]:flex-none'

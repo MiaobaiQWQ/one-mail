@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import type { Message } from '@renderer/components/mail/types'
+import type { Message } from '@renderer/components/mail/shared/types'
 
 type UseMessageSelectionInput = {
   messages: Message[]

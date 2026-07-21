@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { AlertTriangle, KeyRound, RefreshCw } from 'lucide-react'
 
-import type { Account } from '@renderer/components/mail/types'
+import type { Account } from '@renderer/components/mail/shared/types'
 import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { FieldError } from '@renderer/components/ui/field'

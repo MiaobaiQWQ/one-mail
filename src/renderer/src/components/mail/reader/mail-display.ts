@@ -1,4 +1,4 @@
-import type { Attachment, Message } from '@renderer/components/mail/types'
+import type { Attachment, Message } from '@renderer/components/mail/shared/types'
 import type { TranslationKey } from '@renderer/lib/i18n'
 
 export const ATTACHMENT_METADATA_PENDING_SIZE = '__pending__'

@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import type { Account, MailFilterTag, Message } from '@renderer/components/mail/types'
+import type { Account, MailFilterTag, Message } from '@renderer/components/mail/shared/types'
 import {
   downloadAttachment,
   bulkSetMessageReadState,

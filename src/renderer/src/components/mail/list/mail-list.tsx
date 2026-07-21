@@ -2,16 +2,16 @@ import * as React from 'react'
 import { CheckCheck, Paperclip, Search, Star, X } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { formatAbsoluteTime, formatRelativeTime } from '@renderer/components/mail/date-format'
-import { EllipsisTooltip } from '@renderer/components/mail/ellipsis-tooltip'
+import { formatAbsoluteTime, formatRelativeTime } from '@renderer/components/mail/shared/date-format'
+import { EllipsisTooltip } from '@renderer/components/mail/shared/ellipsis-tooltip'
 import {
   getDisplayPreview,
   getDisplaySender,
   getDisplaySubject
-} from '@renderer/components/mail/mail-display'
-import { MailFilterTags } from '@renderer/components/mail/mail-filter-tags'
-import { MailListSelectionToolbar } from '@renderer/components/mail/mail-list-selection-toolbar'
-import type { Account, MailFilterTag, Message } from '@renderer/components/mail/types'
+} from '@renderer/components/mail/reader/mail-display'
+import { MailFilterTags } from '@renderer/components/mail/list/mail-filter-tags'
+import { MailListSelectionToolbar } from '@renderer/components/mail/list/mail-list-selection-toolbar'
+import type { Account, MailFilterTag, Message } from '@renderer/components/mail/shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import {

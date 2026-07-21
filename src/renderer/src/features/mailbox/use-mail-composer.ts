@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { toast } from 'sonner'
 
-import type { Account, Message } from '@renderer/components/mail/types'
+import type { Account, Message } from '@renderer/components/mail/shared/types'
 import {
   createComposeDraft,
   saveComposedDraft,

@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { Loader2, Trash2 } from 'lucide-react'
 
-import type { Message } from '@renderer/components/mail/types'
-import { getDisplaySubject } from '@renderer/components/mail/mail-display'
+import type { Message } from '@renderer/components/mail/shared/types'
+import { getDisplaySubject } from '@renderer/components/mail/reader/mail-display'
 import {
   AlertDialog,
   AlertDialogAction,

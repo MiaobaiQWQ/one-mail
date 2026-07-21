@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import type { Account } from '@renderer/components/mail/types'
+import type { Account } from '@renderer/components/mail/shared/types'
 import { ResponsiveDialog } from '@renderer/components/responsive-dialog'
 import { Button } from '@renderer/components/ui/button'
 import { FieldError } from '@renderer/components/ui/field'

@@ -10,7 +10,7 @@ import {
   Trash2
 } from 'lucide-react'
 
-import type { Account } from '@renderer/components/mail/types'
+import type { Account } from '@renderer/components/mail/shared/types'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import {

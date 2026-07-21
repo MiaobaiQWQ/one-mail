@@ -5,16 +5,16 @@ import { AccountWarningDialog } from '@renderer/components/account/account-warni
 import { EditAccountDialog } from '@renderer/components/account/edit-account-dialog'
 import { OutlookImapHelpDialog } from '@renderer/components/account/outlook-imap-help-dialog'
 import { RemoveAccountDialog } from '@renderer/components/account/remove-account-dialog'
-import { DeleteMessageDialog } from '@renderer/components/mail/delete-message-dialog'
-import { MailComposer } from '@renderer/components/mail/mail-composer'
-import { MailList } from '@renderer/components/mail/mail-list'
-import { MailReader } from '@renderer/components/mail/mail-reader'
-import { OutboxPanel } from '@renderer/components/mail/outbox-panel'
+import { DeleteMessageDialog } from '@renderer/components/mail/shared/delete-message-dialog'
+import { MailComposer } from '@renderer/components/mail/composer/mail-composer'
+import { MailList } from '@renderer/components/mail/list/mail-list'
+import { MailReader } from '@renderer/components/mail/reader/mail-reader'
+import { OutboxPanel } from '@renderer/components/mail/list/outbox-panel'
 import {
   BackupImportDialog,
   type BackupImportDialogSource
 } from '@renderer/components/backup/backup-import-dialog'
-import type { Account, MailFilterTag, Message } from '@renderer/components/mail/types'
+import type { Account, MailFilterTag, Message } from '@renderer/components/mail/shared/types'
 import { SettingsDialog } from '@renderer/components/settings/settings-dialog'
 import {
   ResizableHandle,

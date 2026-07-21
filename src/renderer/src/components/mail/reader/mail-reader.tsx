@@ -11,8 +11,8 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 
-import { formatAbsoluteTime, formatRelativeTime } from '@renderer/components/mail/date-format'
-import { EllipsisTooltip } from '@renderer/components/mail/ellipsis-tooltip'
+import { formatAbsoluteTime, formatRelativeTime } from '@renderer/components/mail/shared/date-format'
+import { EllipsisTooltip } from '@renderer/components/mail/shared/ellipsis-tooltip'
 import {
   ATTACHMENT_METADATA_PENDING_SIZE,
   getDisplayAttachmentName,
@@ -21,9 +21,9 @@ import {
   getDisplayBodyParagraphs,
   getDisplaySender,
   getDisplaySubject
-} from '@renderer/components/mail/mail-display'
-import { prepareMailHtml, type PreparedMailHtml } from '@renderer/components/mail/mail-html'
-import type { Attachment, Message } from '@renderer/components/mail/types'
+} from '@renderer/components/mail/reader/mail-display'
+import { prepareMailHtml, type PreparedMailHtml } from '@renderer/components/mail/reader/mail-html'
+import type { Attachment, Message } from '@renderer/components/mail/shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import {

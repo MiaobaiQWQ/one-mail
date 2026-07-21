@@ -10,7 +10,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
 import { cn } from '@renderer/lib/utils'
-import type { MailFilterTag } from './types'
+import type { MailFilterTag } from '../shared/types'
 
 const quickFilters: Array<{
   value: MailFilterTag

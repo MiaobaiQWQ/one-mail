@@ -3,7 +3,7 @@ import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import type { Account } from '@renderer/components/mail/types'
+import type { Account } from '@renderer/components/mail/shared/types'
 import { ResponsiveDialog } from '@renderer/components/responsive-dialog'
 import { Button } from '@renderer/components/ui/button'
 import { FieldError, FieldGroup } from '@renderer/components/ui/field'

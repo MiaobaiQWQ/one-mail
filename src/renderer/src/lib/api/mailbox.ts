@@ -1,21 +1,6 @@
 import type {
-  AccountMailboxStats,
-  AccountSyncRunResult,
-  AccountCreatedEvent,
-  AccountCreateInput,
-  AccountUpdateInput,
-  AppSettings,
-  AppUpdateCheckResult,
-  AppUpdateStatus,
-  BackupImportProgress,
-  BackupSyncDownloadResult,
-  BackupSyncSettings,
-  BackupSyncTestResult,
-  BackupSyncTransferResult,
-  BackupImportResult,
   AttachmentDownloadResult,
   ComposeDraft as SharedComposeDraft,
-  MailAccount,
   MailAddressInput,
   MailAttachmentInput,
   MailMessageDetail,
@@ -28,21 +13,13 @@ import type {
   MessageListQuery,
   MailboxChangedEvent,
   OutboxMessage as SharedOutboxMessage,
-  SettingsUpdateInput,
-  SyncMode,
-  SyncStatus,
+  AppSettings,
   SystemInfo
-} from '../../../shared/types'
-import { normalizeMailBodyText, normalizeMailDisplayText } from '../../../shared/mail-text'
-import { ATTACHMENT_METADATA_PENDING_SIZE } from '@renderer/components/mail/mail-display'
-import type { Account, Message, MessageFolderRole } from '@renderer/components/mail/types'
-import { normalizeLocale, translate } from '@renderer/lib/i18n'
-
-const platformLabel: Partial<Record<NodeJS.Platform, string>> = {
-  darwin: 'macOS',
-  win32: 'Windows',
-  linux: 'Linux'
-}
+} from '../../../../shared/types'
+import { normalizeMailBodyText, normalizeMailDisplayText } from '../../../../shared/mail-text'
+import { ATTACHMENT_METADATA_PENDING_SIZE } from '@renderer/components/mail/reader/mail-display'
+import type { Account, Message, MessageFolderRole } from '@renderer/components/mail/shared/types'
+import { toAccountList, getDefaultSelectedAccountId } from './accounts'
 
 export const MESSAGE_LIST_PAGE_SIZE = 100
 
@@ -180,172 +157,11 @@ export async function loadInitialData(): Promise<{
   }
 }
 
-export async function createAccount(input: AccountCreateInput): Promise<MailAccount> {
-  return window.api.accounts.create(input)
-}
-
-export async function openAddAccountWindow(): Promise<boolean> {
-  return window.api.accounts.openAddWindow()
-}
-
-export function onAccountCreated(callback: (event: AccountCreatedEvent) => void): () => void {
-  const onCreated = window.api?.accounts?.onCreated
-  if (typeof onCreated !== 'function') return () => {}
-
-  return onCreated(callback)
-}
-
-export async function updateAccount(input: AccountUpdateInput): Promise<MailAccount> {
-  return window.api.accounts.update(input)
-}
-
-export async function reauthorizeAccount(accountId: number): Promise<MailAccount> {
-  return window.api.accounts.reauthorize(accountId)
-}
-
-export async function removeAccount(accountId: number): Promise<boolean> {
-  return window.api.accounts.remove(accountId)
-}
-
-export async function syncAccount(
-  accountId: number,
-  mode: SyncMode = 'refresh'
-): Promise<AccountSyncRunResult> {
-  const startAccount = window.api?.sync?.startAccount
-  if (typeof startAccount !== 'function') {
-    throw new Error(getStaticTranslation('sync.serviceUnavailable'))
-  }
-
-  return startAccount(accountId, mode)
-}
-
-export async function syncAllAccounts(mode: SyncMode = 'refresh'): Promise<SyncStatus> {
-  const startAll = window.api?.sync?.startAll
-  if (typeof startAll !== 'function') {
-    throw new Error(getStaticTranslation('sync.serviceUnavailable'))
-  }
-
-  return startAll(mode)
-}
-
 export function onMailboxChanged(callback: (event: MailboxChangedEvent) => void): () => void {
   const onChanged = window.api?.sync?.onMailboxChanged
   if (typeof onChanged !== 'function') return () => {}
 
   return onChanged(callback)
-}
-
-export async function saveSettings(input: SettingsUpdateInput): Promise<AppSettings> {
-  return window.api.settings.update(input)
-}
-
-export async function exportSqlBackup(): Promise<string | null> {
-  return window.api.settings.exportSql()
-}
-
-export async function importSqlBackup(operationId?: string): Promise<BackupImportResult> {
-  return window.api.settings.importSql(operationId)
-}
-
-export async function loadBackupSyncSettings(): Promise<BackupSyncSettings> {
-  return window.api.settings.getBackupSync()
-}
-
-export async function saveBackupSyncSettings(
-  input: BackupSyncSettings
-): Promise<BackupSyncSettings> {
-  return window.api.settings.updateBackupSync(input)
-}
-
-export async function testBackupSyncSettings(
-  input: BackupSyncSettings
-): Promise<BackupSyncTestResult> {
-  return window.api.settings.testBackupSync(input)
-}
-
-export async function uploadBackupSync(): Promise<BackupSyncTransferResult> {
-  return window.api.settings.uploadBackupSync()
-}
-
-export async function downloadBackupSync(operationId?: string): Promise<BackupSyncDownloadResult> {
-  return window.api.settings.downloadBackupSync(operationId)
-}
-
-export async function importBackupFromRemote(
-  input: BackupSyncSettings,
-  operationId?: string
-): Promise<BackupSyncDownloadResult> {
-  return window.api.settings.importBackupFromRemote(input, operationId)
-}
-
-export function onBackupImportProgress(
-  callback: (progress: BackupImportProgress) => void
-): () => void {
-  return window.api.settings.onBackupImportProgress(callback)
-}
-
-export async function revealDatabaseInFileManager(): Promise<boolean> {
-  return window.api.system.revealDatabase()
-}
-
-export async function revealPathInFileManager(path: string): Promise<boolean> {
-  return window.api.system.revealPath(path)
-}
-
-export async function openExternalUrl(url: string): Promise<boolean> {
-  return window.api.system.openExternal(url)
-}
-
-export async function checkForAppUpdates(): Promise<AppUpdateCheckResult> {
-  const checkUpdates = window.api?.updates?.check
-  if (typeof checkUpdates !== 'function') {
-    return {
-      status: 'unsupported',
-      currentVersion: '',
-      message: getStaticTranslation('settings.about.updateServiceUnavailable')
-    }
-  }
-
-  return checkUpdates()
-}
-
-export async function getAppUpdateStatus(): Promise<AppUpdateStatus> {
-  const status = window.api?.updates?.status
-  if (typeof status !== 'function') {
-    return {
-      state: 'unsupported',
-      currentVersion: '',
-      message: getStaticTranslation('settings.about.updateServiceUnavailable'),
-      updatedAt: new Date().toISOString()
-    }
-  }
-
-  return status()
-}
-
-export function onAppUpdateStatus(callback: (status: AppUpdateStatus) => void): () => void {
-  const onStatus = window.api?.updates?.onStatus
-  if (typeof onStatus !== 'function') return () => {}
-
-  return onStatus(callback)
-}
-
-export async function installAppUpdate(): Promise<boolean> {
-  const install = window.api?.updates?.install
-  if (typeof install !== 'function') {
-    return false
-  }
-
-  return install()
-}
-
-export async function loadAccounts(): Promise<Account[]> {
-  const [accounts, accountStats] = await Promise.all([
-    window.api.accounts.list(),
-    window.api.messages.stats()
-  ])
-
-  return toAccountList(accounts, accountStats)
 }
 
 export async function loadMessages(query: MessageListQuery): Promise<Message[]> {
@@ -508,65 +324,6 @@ export async function restoreMessage(messageId: number): Promise<RestoreMessageR
     messageId: result.messageId,
     restored: result.restored
   }
-}
-
-export function getPlatformName(info?: SystemInfo): string {
-  if (!info) return 'Desktop'
-  return platformLabel[info.platform] ?? info.platform
-}
-
-function toAccountList(accounts: MailAccount[], accountStats: AccountMailboxStats[]): Account[] {
-  const statsByAccount = new Map(accountStats.map((stats) => [stats.accountId, stats]))
-  const totalUnread = accountStats.reduce((sum, stats) => sum + stats.unreadCount, 0)
-  const totalMessages = accountStats.reduce((sum, stats) => sum + stats.totalCount, 0)
-
-  const accountItems = accounts.map((account) => {
-    const stats = statsByAccount.get(account.accountId)
-
-    return {
-      id: String(account.accountId),
-      accountId: account.accountId,
-      providerKey: account.providerKey,
-      authType: account.authType,
-      name: formatAccountName(account),
-      address: account.email,
-      unread: stats?.unreadCount ?? 0,
-      messageCount: stats?.totalCount ?? 0,
-      credentialState: account.credentialState,
-      status: account.status,
-      lastError: account.lastError,
-      accent: account.syncEnabled ? 'bg-muted-foreground' : 'bg-muted'
-    }
-  })
-
-  if (accounts.length <= 2) {
-    return accountItems
-  }
-
-  return [
-    {
-      id: 'all',
-      providerKey: 'all',
-      authType: 'manual',
-      name: '',
-      address: '',
-      unread: totalUnread,
-      messageCount: totalMessages,
-      status: accounts.length > 0 ? 'active' : 'empty',
-      accent: 'bg-primary'
-    },
-    ...accountItems
-  ]
-}
-
-function getDefaultSelectedAccountId(accounts: Account[]): string {
-  return accounts.find((account) => account.id === 'all')?.id ?? accounts[0]?.id ?? ''
-}
-
-function formatAccountName(account: MailAccount): string {
-  const label = account.accountLabel?.trim()
-  if (!label || label === account.email) return account.email
-  return `${label}(${account.email})`
 }
 
 function toMessage(message: MailMessageSummary | MailMessageDetail): Message {
@@ -798,8 +555,4 @@ export function toMessageQuery(
     limit: pagination?.limit ?? MESSAGE_LIST_PAGE_SIZE,
     offset: pagination?.offset ?? 0
   }
-}
-
-function getStaticTranslation(key: Parameters<typeof translate>[1]): string {
-  return translate(normalizeLocale(document.documentElement.lang), key)
 }
