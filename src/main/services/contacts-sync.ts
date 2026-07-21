@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import type { Contact, ContactInput } from '../../shared/types'
+import type { ContactInput } from '../../shared/types'
 import { createContact, listContacts } from '../db/repositories/contact.repository'
 
 // A simple CSV parser/generator

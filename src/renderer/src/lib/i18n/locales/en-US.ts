@@ -9,6 +9,7 @@ export const enUS = {
   'common.refresh': 'Refresh',
   'common.retry': 'Retry',
   'common.close': 'Close',
+  'common.noResults': 'No results found',
   'common.confirm': 'Confirm',
   'common.ok': 'Got it',
   'common.later': 'Later',

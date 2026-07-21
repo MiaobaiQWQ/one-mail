@@ -45,7 +45,9 @@ export function AddressInput({
     if (!draft) return []
     const lowerDraft = draft.toLowerCase()
     return contacts.filter(
-      (c) => c.name.toLowerCase().includes(lowerDraft) || c.email.toLowerCase().includes(lowerDraft)
+      (c) =>
+        c.name.toLowerCase().includes(lowerDraft) ||
+        c.emails.some((e) => e.email.toLowerCase().includes(lowerDraft))
     )
   }, [contacts, draft])
 
@@ -141,18 +143,20 @@ export function AddressInput({
           <CommandList>
             <CommandEmpty>{t('common.noResults')}</CommandEmpty>
             <CommandGroup>
-              {filteredContacts.map((contact) => (
-                <CommandItem
-                  key={contact.id}
-                  value={contact.email}
-                  onSelect={() => handleSelectContact(contact.email)}
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{contact.name}</span>
-                    <span className="text-xs text-muted-foreground">{contact.email}</span>
-                  </div>
-                </CommandItem>
-              ))}
+              {filteredContacts.flatMap((contact) =>
+                contact.emails.map((e) => (
+                  <CommandItem
+                    key={`${contact.id}-${e.email}`}
+                    value={e.email}
+                    onSelect={() => handleSelectContact(e.email)}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{contact.name}</span>
+                      <span className="text-xs text-muted-foreground">{e.email}</span>
+                    </div>
+                  </CommandItem>
+                ))
+              )}
             </CommandGroup>
           </CommandList>
         </Command>

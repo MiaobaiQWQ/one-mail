@@ -9,6 +9,7 @@ export const zhCN = {
   'common.refresh': '刷新',
   'common.retry': '重试',
   'common.close': '关闭',
+  'common.noResults': '没有找到结果',
   'common.confirm': '确认',
   'common.ok': '知道了',
   'common.later': '稍后',

@@ -2,9 +2,7 @@ import { getDatabase, toNumber, toOptionalString, type SqliteRow } from '../conn
 import type {
   Contact,
   ContactInput,
-  ContactGroup,
-  ContactEmail,
-  ContactPhone
+  ContactGroup
 } from '../../../shared/types'
 
 type ContactRow = SqliteRow & {

@@ -38,8 +38,16 @@ export function ContactFormDialog({
       if (contact) {
         setName(contact.name)
         setNotes(contact.notes || '')
-        setEmails(contact.emails.length ? [...contact.emails] : [{ email: '', label: 'Work' }])
-        setPhones(contact.phones.length ? [...contact.phones] : [{ phone: '', label: 'Mobile' }])
+        setEmails(
+          contact.emails.length
+            ? contact.emails.map((e) => ({ email: e.email, label: e.label || 'Work' }))
+            : [{ email: '', label: 'Work' }]
+        )
+        setPhones(
+          contact.phones.length
+            ? contact.phones.map((p) => ({ phone: p.phone, label: p.label || 'Mobile' }))
+            : [{ phone: '', label: 'Mobile' }]
+        )
       } else {
         setName('')
         setNotes('')
