@@ -16,7 +16,7 @@ OneMail is a local-first desktop mail client built with Electron, React, and Typ
 
 **Language**: [中文](./README.md) | English
 
-**Website / Downloads**: [https://zhihui-hu.github.io/one-mail/](https://zhihui-hu.github.io/one-mail/)
+**Website / Downloads**: [https://MiaobaiQWQ.github.io/one-mail/](https://MiaobaiQWQ.github.io/one-mail/)
 
 ## Features
 

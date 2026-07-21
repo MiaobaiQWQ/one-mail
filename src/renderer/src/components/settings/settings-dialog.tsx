@@ -1041,7 +1041,7 @@ function AboutSettings({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void openExternalUrl('https://github.com/zhihui-hu/one-mail')}
+              onClick={() => void openExternalUrl('https://github.com/MiaobaiQWQ/one-mail')}
             >
               <ExternalLink data-icon="inline-start" />
               GitHub
