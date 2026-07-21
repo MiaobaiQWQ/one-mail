@@ -13,6 +13,8 @@ export type Account = {
   credentialState?: string
   lastError?: string
   accent: string
+  avatarText?: string
+  avatarUrl?: string
 }
 
 export type Attachment = {

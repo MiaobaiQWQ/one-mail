@@ -9,12 +9,21 @@ import { Button } from '@renderer/components/ui/button'
 import { FieldError, FieldGroup } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@renderer/components/ui/select'
+import { ACCOUNT_COLORS } from '@renderer/lib/api/accounts'
+import { cn } from '@renderer/lib/utils'
 import type { AccountUpdateInput } from '../../../../shared/types'
 import { AccountFormField } from './account-form-field'
+import { ImageCropDialog } from './image-crop-dialog'
+
+import { Camera, X } from 'lucide-react'
 
 type EditAccountValues = {
   accountLabel?: string
   password?: string
+  avatarText?: string
+  avatarUrl?: string
+  colorKey?: string
 }
 
 type EditAccountDialogProps = {
@@ -39,7 +48,10 @@ export function EditAccountDialog({
     resolver: zodResolver(editAccountSchema),
     defaultValues: {
       accountLabel: getInitialLabel(account),
-      password: ''
+      password: '',
+      avatarText: account.avatarText || '',
+      avatarUrl: account.avatarUrl || '',
+      colorKey: ACCOUNT_COLORS.includes(account.accent) ? account.accent : 'auto'
     }
   })
 
@@ -47,7 +59,10 @@ export function EditAccountDialog({
     if (!open) return
     form.reset({
       accountLabel: getInitialLabel(account),
-      password: ''
+      password: '',
+      avatarText: account.avatarText || '',
+      avatarUrl: account.avatarUrl || '',
+      colorKey: ACCOUNT_COLORS.includes(account.accent) ? account.accent : 'auto'
     })
   }, [account, form, open])
 
@@ -58,6 +73,36 @@ export function EditAccountDialog({
       setError(null)
     }
     onOpenChange(nextOpen)
+  }
+
+  const avatarUrl = form.watch('avatarUrl')
+
+  const [cropDialogOpen, setCropDialogOpen] = React.useState(false)
+  const [tempImageSrc, setTempImageSrc] = React.useState('')
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result
+      if (typeof result === 'string') {
+        setTempImageSrc(result)
+        setCropDialogOpen(true)
+      }
+    }
+    reader.readAsDataURL(file)
+    event.target.value = ''
+  }
+
+  const handleCropComplete = (croppedUrl: string) => {
+    form.setValue('avatarUrl', croppedUrl)
+    form.setValue('avatarText', '') // clear text if image is uploaded
+  }
+
+  const handleRemoveImage = () => {
+    form.setValue('avatarUrl', '')
   }
 
   async function handleSubmit(values: EditAccountValues): Promise<void> {
@@ -77,7 +122,10 @@ export function EditAccountDialog({
       await onSubmit({
         accountId: account.accountId,
         accountLabel: values.accountLabel?.trim() ?? '',
-        password: isOAuthAccount ? undefined : password
+        password: isOAuthAccount ? undefined : password,
+        avatarText: values.avatarText?.trim() || undefined,
+        avatarUrl: values.avatarUrl || undefined,
+        colorKey: values.colorKey === 'auto' ? undefined : (values.colorKey || undefined)
       })
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : t('account.add.saveError'))
@@ -134,6 +182,77 @@ export function EditAccountDialog({
               {...form.register('accountLabel')}
             />
           </AccountFormField>
+
+          <AccountFormField
+            id="edit-account-avatar-text"
+            label="自定义图标"
+            error={form.formState.errors.avatarText?.message || form.formState.errors.avatarUrl?.message}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative group size-10 shrink-0">
+                {avatarUrl ? (
+                  <>
+                    <img src={avatarUrl} alt="Avatar" className="size-full rounded-md object-cover border" />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -top-1.5 -right-1.5 hidden group-hover:flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </>
+                ) : (
+                  <label className="flex size-full cursor-pointer items-center justify-center rounded-md border border-dashed hover:bg-muted transition-colors">
+                    <Camera className="size-4 text-muted-foreground" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                )}
+              </div>
+              <div className="flex-1">
+                <Input
+                  id="edit-account-avatar-text"
+                  autoComplete="off"
+                  maxLength={2}
+                  placeholder="或者输入文字(最多2个字符)"
+                  disabled={Boolean(avatarUrl)}
+                  aria-invalid={Boolean(form.formState.errors.avatarText)}
+                  {...form.register('avatarText')}
+                />
+              </div>
+            </div>
+          </AccountFormField>
+
+          <AccountFormField
+            id="edit-account-color"
+            label="展示颜色"
+            error={form.formState.errors.colorKey?.message}
+          >
+            <Select
+              value={form.watch('colorKey') || 'auto'}
+              onValueChange={(value) => form.setValue('colorKey', value)}
+            >
+              <SelectTrigger aria-label="展示颜色">
+                <SelectValue placeholder="默认自动分配" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">自动分配</SelectItem>
+                {ACCOUNT_COLORS.map((color) => (
+                  <SelectItem key={color} value={color}>
+                    <div className="flex items-center gap-2">
+                      <div className={cn("size-4 rounded-sm", color)} />
+                      <span className="text-xs uppercase">{color.replace('bg-', '').replace('-500', '')}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </AccountFormField>
+
           {isOAuthAccount ? null : (
             <AccountFormField
               id="edit-account-password"
@@ -160,6 +279,13 @@ export function EditAccountDialog({
 
         {error ? <FieldError>{error}</FieldError> : null}
       </form>
+
+      <ImageCropDialog
+        open={cropDialogOpen}
+        onOpenChange={setCropDialogOpen}
+        imageSrc={tempImageSrc}
+        onCropComplete={handleCropComplete}
+      />
     </ResponsiveDialog>
   )
 }
@@ -167,7 +293,10 @@ export function EditAccountDialog({
 function createEditAccountSchema(t: (key: TranslationKey) => string) {
   return z.object({
     accountLabel: z.string().trim().max(80, t('account.form.labelMax')).optional(),
-    password: z.string().trim().optional()
+    password: z.string().trim().optional(),
+    avatarText: z.string().trim().max(2, '最多2个字符').optional(),
+    avatarUrl: z.string().optional(),
+    colorKey: z.string().trim().optional()
   })
 }
 

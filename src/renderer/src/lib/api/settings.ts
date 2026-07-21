@@ -31,9 +31,7 @@ export async function saveSettings(input: SettingsUpdateInput): Promise<AppSetti
   return window.api.settings.update(input)
 }
 
-export async function importBackgroundImage(filePath: string): Promise<{ path: string; filename: string }> {
-  return window.api.settings.importBackgroundImage(filePath)
-}
+
 
 export async function detectShortcutConflict(keyString: string, actionId: string): Promise<string | null> {
   return window.api.settings.detectShortcutConflict(keyString, actionId)

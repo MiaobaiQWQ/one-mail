@@ -918,6 +918,7 @@ export function MailboxWorkspace(): React.JSX.Element {
           >
             <MailList
               account={selectedAccount}
+              allAccounts={accounts}
               messages={messages}
               selectedMessageId={selectedMessageId}
               filters={filters}

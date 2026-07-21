@@ -45,7 +45,8 @@ const TABLE_COLUMN_UPGRADES: Record<string, ColumnDefinition[]> = {
     {
       name: 'smtp_enabled',
       definition: 'smtp_enabled INTEGER NOT NULL DEFAULT 1 CHECK (smtp_enabled IN (0, 1))'
-    }
+    },
+    { name: 'avatar_url', definition: 'avatar_url TEXT' }
   ],
   onemail_mail_messages: [
     {

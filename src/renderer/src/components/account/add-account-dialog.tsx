@@ -99,7 +99,9 @@ export function AddAccountForm({
         smtpPort: preset.smtpPort,
         smtpSecurity: preset.smtpSecurity,
         smtpAuthType: preset.smtpAuthType,
-        smtpEnabled: preset.smtpEnabled
+        smtpEnabled: preset.smtpEnabled,
+        avatarText: values.avatarText?.trim() || undefined,
+        colorKey: values.colorKey === 'auto' ? undefined : (values.colorKey || undefined)
       })
       form.reset(defaultAccountFormValues)
       setKind(defaultAccountFormValues.kind)

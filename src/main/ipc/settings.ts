@@ -1,6 +1,4 @@
-import { app, ipcMain, type WebContents } from 'electron'
-import { copyFile, mkdir } from 'node:fs/promises'
-import { join, basename } from 'node:path'
+import { ipcMain, type WebContents } from 'electron'
 import {
   getBackupSyncSettings,
   getSettings,
@@ -27,18 +25,6 @@ export function registerSettingsIpc(): void {
     const settings = updateSettings(input)
     refreshMailboxWatchers()
     return settings
-  })
-  ipcMain.handle('settings/importBackgroundImage', async (_event, filePath: string) => {
-    const userData = app.getPath('userData')
-    const backgroundsDir = join(userData, 'backgrounds')
-    await mkdir(backgroundsDir, { recursive: true })
-    
-    const filename = `${Date.now()}-${basename(filePath)}`
-    const destPath = join(backgroundsDir, filename)
-    
-    await copyFile(filePath, destPath)
-    
-    return { path: `file://${destPath.replace(/\\/g, '/')}`, filename }
   })
   ipcMain.handle('settings/detectShortcutConflict', (_event, keyString: string, actionId: string) => {
     const settings = getSettings()

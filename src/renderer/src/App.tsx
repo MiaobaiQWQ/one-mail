@@ -48,40 +48,7 @@ function App(): React.JSX.Element {
     return undefined
   }, [settings?.theme])
 
-  React.useEffect(() => {
-    if (!settings) return
 
-    const root = document.documentElement
-    if (settings.backgroundImage?.path) {
-      root.style.setProperty('--bg-image', `url(${settings.backgroundImage.path})`)
-      root.style.setProperty('--bg-opacity', settings.backgroundImage.opacity.toString())
-      
-      let bgSize = 'cover'
-      let bgRepeat = 'no-repeat'
-      
-      switch (settings.backgroundImage.fit) {
-        case 'contain':
-          bgSize = 'contain'
-          break
-        case 'tile':
-          bgSize = 'auto'
-          bgRepeat = 'repeat'
-          break
-        case 'cover':
-        default:
-          bgSize = 'cover'
-          break
-      }
-      
-      root.style.setProperty('--bg-size', bgSize)
-      root.style.setProperty('--bg-repeat', bgRepeat)
-    } else {
-      root.style.removeProperty('--bg-image')
-      root.style.removeProperty('--bg-opacity')
-      root.style.removeProperty('--bg-size')
-      root.style.removeProperty('--bg-repeat')
-    }
-  }, [settings?.backgroundImage])
 
   return (
     <I18nProvider>

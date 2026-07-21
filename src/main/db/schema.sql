@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS onemail_mail_accounts (
   display_name TEXT,
   account_label TEXT NOT NULL,
   avatar_text TEXT,
+  avatar_url TEXT,
   color_key TEXT,
   auth_type TEXT NOT NULL CHECK (
     auth_type IN ('oauth2', 'app_password', 'password', 'bridge', 'manual')

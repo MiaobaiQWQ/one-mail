@@ -225,8 +225,15 @@ function AccountRow({
         )}
       >
         <ProviderLogo account={account} selected={selected} warning={Boolean(warning)} />
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="truncate font-medium">{getAccountDisplayName(account, t)}</span>
+        <span className="flex min-w-0 flex-col items-start gap-0.5">
+          <span className="truncate font-medium">
+            {account.name || account.address}
+          </span>
+          {account.name && account.name !== account.address ? (
+            <span className="truncate text-muted-foreground opacity-60 text-[10px]">
+              {account.address}
+            </span>
+          ) : null}
           {warning ? (
             <AlertTriangle
               className="size-3.5 shrink-0 text-warning-foreground"
@@ -321,8 +328,19 @@ function ProviderLogo({
   const logo = getProviderLogoMetadata(account.providerKey, account.address)
   const [src, setSrc] = React.useState<string | null>(null)
 
+  // Use custom avatarText if available, otherwise fallback
+  const fallbackText = account.avatarText || logo.fallback
+  // We determine if we should show the custom colored avatar.
+  // Let's show it if there's a specific accent color or avatar text.
+  // Since we assign colors automatically, we can always show the colored avatar!
+  // But wait, the user might still like the fetched logos.
+  // If the user explicitly provided avatarText (maybe length > 1, or they just want the colored block).
+  // Actually, using the colored block with avatarText is a very common email client pattern.
+  const showColoredAvatar = !isUnifiedInbox && account.avatarText
+  const showImageAvatar = !isUnifiedInbox && account.avatarUrl
+
   React.useEffect(() => {
-    if (isUnifiedInbox) return undefined
+    if (isUnifiedInbox || showColoredAvatar || showImageAvatar) return undefined
 
     let cancelled = false
     setSrc(null)
@@ -334,34 +352,37 @@ function ProviderLogo({
     return () => {
       cancelled = true
     }
-  }, [logo.domain, isUnifiedInbox])
+  }, [logo.domain, isUnifiedInbox, showColoredAvatar, showImageAvatar])
 
   return (
     <span
       className={cn(
-        'flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md bg-background text-muted-foreground [&_img]:size-4 [&_img]:object-contain [&_svg]:size-4',
-        isUnifiedInbox && 'bg-transparent [&_img]:size-5 [&_img]:rounded-md [&_img]:object-cover',
+        'flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md text-muted-foreground [&_img]:size-4 [&_img]:object-contain [&_svg]:size-4',
+        isUnifiedInbox || showImageAvatar ? 'bg-transparent [&_img]:size-5 [&_img]:rounded-md [&_img]:object-cover' : 'bg-background',
         warning && 'text-warning-foreground',
-        selected && 'text-foreground'
+        selected && 'text-foreground',
+        showColoredAvatar && !isUnifiedInbox && account.accent && account.accent !== 'bg-muted' && account.accent !== 'bg-muted-foreground' && cn(account.accent, "text-primary-foreground")
       )}
     >
       {isUnifiedInbox ? (
         <img src={oneMailIcon} alt="" />
+      ) : showImageAvatar ? (
+        <img src={account.avatarUrl} alt="" />
+      ) : showColoredAvatar ? (
+        <span className="text-[10px] font-semibold leading-none" aria-hidden="true">
+          {fallbackText}
+        </span>
       ) : src ? (
         <img src={src} alt="" />
       ) : (
         <span className="text-[10px] font-semibold leading-none" aria-hidden="true">
-          {logo.fallback}
+          {fallbackText}
         </span>
       )}
     </span>
   )
 }
 
-function getAccountDisplayName(account: Account, t: (key: TranslationKey) => string): string {
-  if (account.id === 'all') return t('account.all.name')
-  return account.name || account.address || t('account.empty.name')
-}
 
 function EmptyAccounts(): React.JSX.Element {
   const { t } = useI18n()

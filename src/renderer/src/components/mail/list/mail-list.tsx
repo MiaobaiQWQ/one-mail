@@ -49,6 +49,7 @@ type MailListProps = {
   onClearSelection?: () => void
   onMarkSelectedRead?: () => void
   onDeleteSelected?: () => void
+  allAccounts?: Account[]
 }
 
 export function MailList({
@@ -74,7 +75,8 @@ export function MailList({
   onSelectAllVisible,
   onClearSelection,
   onMarkSelectedRead,
-  onDeleteSelected
+  onDeleteSelected,
+  allAccounts = []
 }: MailListProps): React.JSX.Element {
   const { locale, t } = useI18n()
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
@@ -86,6 +88,18 @@ export function MailList({
     () => messages.filter((message) => selectedMessageIds.has(message.id) && message.unread).length,
     [messages, selectedMessageIds]
   )
+
+  const accountMap = React.useMemo(() => {
+    if (account.id !== 'all' || !allAccounts.length) return undefined
+    
+    const map = new Map<number, Account>()
+    for (const acc of allAccounts) {
+      if (acc.accountId) {
+        map.set(acc.accountId, acc)
+      }
+    }
+    return map
+  }, [account.id, allAccounts])
 
   const handleScroll = React.useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
@@ -199,6 +213,7 @@ export function MailList({
                     selectionDisabled={selectionDisabled}
                     onToggleMessageSelection={onToggleMessageSelection}
                     onSelectMessage={onSelectMessage}
+                    accountMap={accountMap}
                   />
                 )
               })}
@@ -244,14 +259,15 @@ function LoadMoreState({
   return <div className="h-4 border-b" aria-hidden="true" />
 }
 
-const MessageListItem = React.memo(function MessageListItem({
+function MessageListItem({
   message,
   locale,
   selected,
   checked,
   selectionDisabled,
   onToggleMessageSelection,
-  onSelectMessage
+  onSelectMessage,
+  accountMap
 }: {
   message: Message
   locale: AppLocale
@@ -260,11 +276,17 @@ const MessageListItem = React.memo(function MessageListItem({
   selectionDisabled?: boolean
   onToggleMessageSelection?: (messageId: string, range?: boolean) => void
   onSelectMessage: (messageId: string) => void
+  accountMap?: Map<number, Account>
 }): React.JSX.Element {
   const { t } = useI18n()
   const absoluteTime = formatAbsoluteTime(message.receivedAt)
   const displaySubject = getDisplaySubject(message, t)
   const displaySender = getDisplaySender(message, t)
+  
+  // Calculate receiver account info
+  const receiverAccount = accountMap?.get(message.accountId)
+  const receiverLabel = receiverAccount ? (receiverAccount.name || receiverAccount.address) : undefined
+  
   const fromLabel =
     message.fromAddress && message.fromAddress !== displaySender
       ? `${displaySender} · ${message.fromAddress}`
@@ -344,6 +366,17 @@ const MessageListItem = React.memo(function MessageListItem({
       />
       <span className="min-w-0 select-text">
         <span className="flex min-w-0 items-center gap-1.5 text-xs">
+          {receiverLabel ? (
+            <span 
+              className={cn(
+                "shrink-0 rounded-sm px-1 py-0.5 text-[10px] font-medium leading-none text-primary-foreground",
+                receiverAccount?.accent ? receiverAccount.accent : "bg-primary"
+              )}
+              title={t('mail.list.receivedBy', { account: receiverLabel })}
+            >
+              {receiverLabel}
+            </span>
+          ) : null}
           <EllipsisTooltip
             className={cn(
               'min-w-0 flex-1 truncate text-foreground select-text',
@@ -415,7 +448,7 @@ const MessageListItem = React.memo(function MessageListItem({
       </span>
     </div>
   )
-})
+}
 
 function hasSelectionInside(element: HTMLElement): boolean {
   const selection = window.getSelection()

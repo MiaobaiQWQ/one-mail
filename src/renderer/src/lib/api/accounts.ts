@@ -68,13 +68,29 @@ export async function loadAccounts(): Promise<Account[]> {
   return toAccountList(accounts, accountStats)
 }
 
+export const ACCOUNT_COLORS = [
+  'bg-red-500',
+  'bg-blue-500',
+  'bg-green-500',
+  'bg-yellow-500',
+  'bg-purple-500',
+  'bg-pink-500',
+  'bg-indigo-500',
+  'bg-teal-500',
+  'bg-orange-500',
+  'bg-cyan-500',
+]
+
 export function toAccountList(accounts: MailAccount[], accountStats: AccountMailboxStats[]): Account[] {
   const statsByAccount = new Map(accountStats.map((stats) => [stats.accountId, stats]))
   const totalUnread = accountStats.reduce((sum, stats) => sum + stats.unreadCount, 0)
   const totalMessages = accountStats.reduce((sum, stats) => sum + stats.totalCount, 0)
 
-  const accountItems = accounts.map((account) => {
+  const accountItems = accounts.map((account, index) => {
     const stats = statsByAccount.get(account.accountId)
+    
+    // Use saved colorKey if it exists, otherwise assign a fallback color
+    const colorClass = account.colorKey || ACCOUNT_COLORS[index % ACCOUNT_COLORS.length]
 
     return {
       id: String(account.accountId),
@@ -88,11 +104,13 @@ export function toAccountList(accounts: MailAccount[], accountStats: AccountMail
       credentialState: account.credentialState,
       status: account.status,
       lastError: account.lastError,
-      accent: account.syncEnabled ? 'bg-muted-foreground' : 'bg-muted'
+      accent: account.syncEnabled ? colorClass : 'bg-muted',
+      avatarText: account.avatarText,
+      avatarUrl: account.avatarUrl
     }
   })
 
-  if (accounts.length <= 2) {
+  if (accounts.length === 0) {
     return accountItems
   }
 
@@ -101,7 +119,7 @@ export function toAccountList(accounts: MailAccount[], accountStats: AccountMail
       id: 'all',
       providerKey: 'all',
       authType: 'manual',
-      name: '',
+      name: getStaticTranslation('account.all.name'),
       address: '',
       unread: totalUnread,
       messageCount: totalMessages,

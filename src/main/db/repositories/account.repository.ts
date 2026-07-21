@@ -14,6 +14,9 @@ type AccountRow = SqliteRow & {
   email: string
   display_name: string | null
   account_label: string | null
+  avatar_text: string | null
+  avatar_url: string | null
+  color_key: string | null
   auth_type: MailAccount['authType']
   imap_host: string
   imap_port: number
@@ -40,6 +43,9 @@ export function listAccounts(): MailAccount[] {
         email,
         display_name,
         account_label,
+        avatar_text,
+        avatar_url,
+        color_key,
         auth_type,
         imap_host,
         imap_port,
@@ -79,6 +85,9 @@ export function getAccount(accountId: number): MailAccount | null {
         email,
         display_name,
         account_label,
+        avatar_text,
+        avatar_url,
+        color_key,
         auth_type,
         imap_host,
         imap_port,
@@ -196,6 +205,8 @@ export function createAccount(input: AccountCreateInput): MailAccount {
         display_name,
         account_label,
         avatar_text,
+        avatar_url,
+        color_key,
         auth_type,
         imap_host,
         imap_port,
@@ -215,6 +226,8 @@ export function createAccount(input: AccountCreateInput): MailAccount {
         :displayName,
         :accountLabel,
         :avatarText,
+        :avatarUrl,
+        :colorKey,
         :authType,
         :imapHost,
         :imapPort,
@@ -235,7 +248,9 @@ export function createAccount(input: AccountCreateInput): MailAccount {
       normalizedEmail,
       displayName: null,
       accountLabel,
-      avatarText: normalizedEmail.slice(0, 1).toUpperCase(),
+      avatarText: input.avatarText ?? null,
+      avatarUrl: input.avatarUrl ?? null,
+      colorKey: input.colorKey ?? null,
       authType: input.authType,
       imapHost: input.imapHost,
       imapPort: input.imapPort,
@@ -269,6 +284,9 @@ export function updateAccount(input: AccountUpdateInput): MailAccount {
         provider_key = :providerKey,
         display_name = :displayName,
         account_label = :accountLabel,
+        avatar_text = :avatarText,
+        avatar_url = :avatarUrl,
+        color_key = :colorKey,
         auth_type = :authType,
         imap_host = :imapHost,
         imap_port = :imapPort,
@@ -291,6 +309,9 @@ export function updateAccount(input: AccountUpdateInput): MailAccount {
         input.accountLabel === undefined
           ? (current.accountLabel ?? current.email)
           : input.accountLabel.trim() || current.email,
+      avatarText: input.avatarText !== undefined ? input.avatarText : (current.avatarText ?? null),
+      avatarUrl: input.avatarUrl !== undefined ? input.avatarUrl : (current.avatarUrl ?? null),
+      colorKey: input.colorKey !== undefined ? input.colorKey : (current.colorKey ?? null),
       authType: input.authType ?? current.authType,
       imapHost: input.imapHost ?? current.imapHost,
       imapPort: input.imapPort ?? current.imapPort,
@@ -364,6 +385,9 @@ function mapAccountRow(row: AccountRow): MailAccount {
     email: row.email,
     displayName: toOptionalString(row.display_name),
     accountLabel: toOptionalString(row.account_label),
+    avatarText: toOptionalString(row.avatar_text),
+    avatarUrl: toOptionalString(row.avatar_url),
+    colorKey: toOptionalString(row.color_key),
     authType: row.auth_type,
     imapHost: row.imap_host,
     imapPort: toNumber(row.imap_port),

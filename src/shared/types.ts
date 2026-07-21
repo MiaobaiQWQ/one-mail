@@ -18,6 +18,9 @@ export type MailAccount = {
   email: string
   displayName?: string
   accountLabel?: string
+  avatarText?: string
+  avatarUrl?: string
+  colorKey?: string
   authType: AuthType
   imapHost: string
   imapPort: number
@@ -39,6 +42,9 @@ export type AccountCreateInput = {
   email?: string
   password?: string
   accountLabel?: string
+  avatarText?: string
+  avatarUrl?: string
+  colorKey?: string
   authType: AuthType
   oauthAuthorizationMode?: OAuthAuthorizationMode
   imapHost: string
@@ -61,6 +67,9 @@ export type AccountUpdateInput = Partial<Omit<AccountCreateInput, 'email' | 'pas
   displayName?: string
   password?: string
   syncEnabled?: boolean
+  avatarText?: string
+  avatarUrl?: string
+  colorKey?: string
 }
 
 export type MessageFilterTag = 'unread' | 'starred' | 'today' | 'yesterday' | 'last7'
@@ -362,14 +371,7 @@ export type NotificationStatus = {
   desktopSupported: boolean
 }
 
-export type BackgroundImageFit = 'cover' | 'contain' | 'tile'
 
-export type BackgroundImageSettings = {
-  path: string
-  filename: string
-  fit: BackgroundImageFit
-  opacity: number
-}
 
 export type ShortcutBinding = {
   actionId: string
@@ -389,7 +391,6 @@ export type AppSettings = {
   locale: string
 
   theme: AppTheme
-  backgroundImage?: BackgroundImageSettings
   contextMenuEnabled: boolean
   contextMenuOptions: string[]
   menuDisplayMode: MenuDisplayMode
@@ -580,7 +581,6 @@ export type OneMailApi = {
   settings: {
     get: () => Promise<AppSettings>
     update: (input: SettingsUpdateInput) => Promise<AppSettings>
-    importBackgroundImage: (filePath: string) => Promise<{ path: string; filename: string }>
     detectShortcutConflict: (keyString: string, actionId: string) => Promise<string | null>
     getBackupSync: () => Promise<BackupSyncSettings>
     updateBackupSync: (input: BackupSyncSettings) => Promise<BackupSyncSettings>

@@ -127,6 +127,11 @@ function resolveDatabasePath(): string {
 }
 
 function getDatabaseDir(): string {
+  // 允许通过环境变量手动指定数据库目录
+  const customDataDir = process.env.ONEMAIL_DATABASE_DIR
+  if (customDataDir) {
+    return customDataDir
+  }
   return join(app.getPath('userData'), 'OneMail')
 }
 

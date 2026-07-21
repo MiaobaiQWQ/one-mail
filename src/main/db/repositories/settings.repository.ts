@@ -36,7 +36,6 @@ const settingsDefinition = {
   openAtLogin: { key: 'open_at_login', type: 'boolean' },
   locale: { key: 'locale', type: 'string' },
   theme: { key: 'theme', type: 'string' },
-  backgroundImage: { key: 'background_image', type: 'json' },
   contextMenuEnabled: { key: 'context_menu_enabled', type: 'boolean' },
   contextMenuOptions: { key: 'context_menu_options', type: 'json' },
   menuDisplayMode: { key: 'menu_display_mode', type: 'string' },
@@ -85,7 +84,6 @@ export function getSettings(): AppSettings {
     openAtLogin: getOpenAtLogin(),
     locale: byKey.get(settingsDefinition.locale.key)?.setting_value ?? defaultSettings.locale,
     theme: (byKey.get(settingsDefinition.theme.key)?.setting_value as AppSettings['theme']) ?? defaultSettings.theme,
-    backgroundImage: readJson(byKey.get(settingsDefinition.backgroundImage.key)),
     contextMenuEnabled: readBoolean(byKey.get(settingsDefinition.contextMenuEnabled.key), defaultSettings.contextMenuEnabled),
     contextMenuOptions: readJson(byKey.get(settingsDefinition.contextMenuOptions.key)) ?? defaultSettings.contextMenuOptions,
     menuDisplayMode: (byKey.get(settingsDefinition.menuDisplayMode.key)?.setting_value as AppSettings['menuDisplayMode']) ?? defaultSettings.menuDisplayMode,
@@ -125,11 +123,6 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
   writeSetting(settingsDefinition.locale.key, next.locale, settingsDefinition.locale.type)
   
   writeSetting(settingsDefinition.theme.key, next.theme, settingsDefinition.theme.type)
-  if (next.backgroundImage) {
-    writeSetting(settingsDefinition.backgroundImage.key, JSON.stringify(next.backgroundImage), settingsDefinition.backgroundImage.type)
-  } else {
-    deleteSetting(settingsDefinition.backgroundImage.key)
-  }
   writeSetting(settingsDefinition.contextMenuEnabled.key, next.contextMenuEnabled ? '1' : '0', settingsDefinition.contextMenuEnabled.type)
   writeSetting(settingsDefinition.contextMenuOptions.key, JSON.stringify(next.contextMenuOptions), settingsDefinition.contextMenuOptions.type)
   writeSetting(settingsDefinition.menuDisplayMode.key, next.menuDisplayMode, settingsDefinition.menuDisplayMode.type)

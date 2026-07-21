@@ -69,7 +69,6 @@ import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/ale
 import type {
   AppSettings,
   AppTheme,
-  BackgroundImageSettings,
   MenuDisplayMode,
   ShortcutBinding,
   TranslateProvider,
@@ -129,7 +128,6 @@ export type SettingsFormValues = {
   openAtLogin: boolean
   locale: 'zh-CN' | 'en-US'
   theme: AppTheme
-  backgroundImage?: BackgroundImageSettings
   contextMenuEnabled: boolean
   contextMenuOptions: string[]
   menuDisplayMode: MenuDisplayMode
@@ -323,7 +321,6 @@ export function SettingsDialog({
             openAtLogin: currentValues.openAtLogin,
             locale: currentValues.locale,
             theme: currentValues.theme,
-            backgroundImage: currentValues.backgroundImage,
             contextMenuEnabled: currentValues.contextMenuEnabled,
             contextMenuOptions: currentValues.contextMenuOptions,
             menuDisplayMode: currentValues.menuDisplayMode,
@@ -1143,14 +1140,6 @@ function createSettingsSchema(t: (key: TranslationKey) => string) {
     openAtLogin: z.boolean(),
     locale: z.enum(['zh-CN', 'en-US']),
     theme: z.enum(['light', 'dark', 'system']),
-    backgroundImage: z
-      .object({
-        path: z.string(),
-        filename: z.string(),
-        fit: z.enum(['cover', 'contain', 'tile']),
-        opacity: z.number().min(0).max(1)
-      })
-      .optional(),
     contextMenuEnabled: z.boolean(),
     contextMenuOptions: z.array(z.string()),
     menuDisplayMode: z.enum(['hover', 'click', 'always']),
@@ -1181,7 +1170,6 @@ function toFormValues(settings: AppSettings | null): SettingsFormValues {
     locale: settings?.locale === 'en-US' ? 'en-US' : 'zh-CN',
 
     theme: settings?.theme ?? 'light',
-    backgroundImage: settings?.backgroundImage,
     contextMenuEnabled: settings?.contextMenuEnabled ?? true,
     contextMenuOptions: settings?.contextMenuOptions ?? [],
     menuDisplayMode: settings?.menuDisplayMode ?? 'hover',
@@ -1214,7 +1202,6 @@ function areSettingsEqual(first: SettingsFormValues, second: SettingsFormValues)
     first.privacyMode === second.privacyMode &&
     first.notificationsEnabled === second.notificationsEnabled &&
     first.notificationSound === second.notificationSound &&
-    JSON.stringify(first.backgroundImage) === JSON.stringify(second.backgroundImage) &&
     JSON.stringify(first.contextMenuOptions) === JSON.stringify(second.contextMenuOptions) &&
     JSON.stringify(first.shortcuts) === JSON.stringify(second.shortcuts)
   )
